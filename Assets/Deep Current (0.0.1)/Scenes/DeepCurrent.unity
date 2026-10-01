@@ -129,7 +129,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1002}
   - component: {fileID: 1003}
-  - component: {fileID: 1004}
   - component: {fileID: 1005}
   - component: {fileID: 1006}
   m_Layer: 0
@@ -205,14 +204,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &1004
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1001}
-  m_Enabled: 1
 --- !u!114 &1005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -279,9 +270,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2002}
   - component: {fileID: 2010}
-  - component: {fileID: 2011}
-  - component: {fileID: 2012}
-  - component: {fileID: 2013}
   - component: {fileID: 2014}
   - component: {fileID: 2015}
   m_Layer: 0
@@ -318,42 +306,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d7638465362719862007efb93b78277, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &2011
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cb42cf8691fc64a48e5a7fa7f0cad9b6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &2012
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c5dc09a6b3947c00bc98d613c1565e10, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &2013
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 581768e625332e1acb10232a77479810, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &2014
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -385,10 +337,6 @@ MonoBehaviour:
   anglerPrefab: {fileID: 0}
   spitterPrefab: {fileID: 0}
   elitePrefab: {fileID: 0}
-  orbPrefab: {fileID: 0}
-  capsulePrefab: {fileID: 0}
-  telegraphPrefab: {fileID: 0}
-  floatingTextPrefab: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
