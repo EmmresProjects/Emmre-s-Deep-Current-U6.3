@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b4bb3ad6892b9cd7b2b0443d3f60ca7, type: 3}
+  m_Name: Theme
+  m_EditorClassIdentifier: 
+  abyss: {r: 0.008, g: 0.039, b: 0.063, a: 1}
+  panel: {r: 0.063, g: 0.133, b: 0.169, a: 1}
+  cyan: {r: 0.239, g: 0.949, b: 0.812, a: 1}
+  ice: {r: 0.851, g: 0.965, b: 0.941, a: 1}
+  amber: {r: 1, g: 0.761, b: 0.294, a: 1}
+  coral: {r: 1, g: 0.416, b: 0.302, a: 1}

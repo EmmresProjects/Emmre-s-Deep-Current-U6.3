@@ -1,0 +1,3170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>DEEPCURRENT — Abyssal Salvage Protocol</title>
+    <meta name="description" content="DEEPCURRENT: a twin-stick abyssal survival game. Pilot the salvage sub DSV-07 through waves of abyssal hostiles." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        /* ----- reset & base ----- */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+            touch-action: none;
+            background: #020a10;
+            color: #d9f6f0;
+            font-family: "Chakra Petch", system-ui, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        :root {
+            --abyss: #020a10;
+            --deep: #052029;
+            --panel: rgba(4, 22, 30, 0.82);
+            --cyan: #3df2cf;
+            --cyan-dim: #2e7d78;
+            --ice: #d9f6f0;
+            --amber: #ffc24b;
+            --coral: #ff6a4d;
+            --lime: #9dff8a;
+        }
+
+        #game {
+            position: fixed;
+            inset: 0;
+            display: block;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* ----- ambient fx ----- */
+        #vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            background: radial-gradient(ellipse at 50% 45%, transparent 52%, rgba(1, 6, 10, .62) 100%);
+        }
+        #scan {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 6;
+            opacity: .06;
+            background: repeating-linear-gradient(0deg, rgba(140, 255, 240, .7) 0 1px, transparent 1px 3px);
+        }
+        #critFx {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 7;
+            opacity: 0;
+            transition: opacity .5s;
+            box-shadow: inset 0 0 140px rgba(255, 55, 40, .4);
+            animation: critBeat 1s ease-in-out infinite;
+        }
+        body.critical #critFx {
+            opacity: 1;
+        }
+        @keyframes critBeat {
+            0%,
+            100% {
+                box-shadow: inset 0 0 90px rgba(255, 55, 40, .25);
+            }
+            50% {
+                box-shadow: inset 0 0 160px rgba(255, 55, 40, .5);
+            }
+        }
+        #flash {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 8;
+            opacity: 0;
+            background: radial-gradient(circle, rgba(255, 90, 60, 0) 35%, rgba(255, 60, 40, .5) 100%);
+        }
+        #flash.hit {
+            animation: hitflash .38s ease-out;
+        }
+        @keyframes hitflash {
+            0% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
+        /* ----- HUD ----- */
+        #hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 12;
+            transition: opacity .35s, visibility .35s;
+        }
+        #hud.off {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .hud-top {
+            display: flex;
+            align-items: flex-start;
+            gap: .5rem;
+            padding: .6rem .7rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+        }
+        .hud-top>* {
+            pointer-events: auto;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid rgba(61, 242, 207, .3);
+            clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+            padding: .4rem .8rem .45rem;
+            min-width: 110px;
+            flex-shrink: 1;
+        }
+        .panel.hp {
+            min-width: 140px;
+            flex: 0 1 auto;
+        }
+        .panel.score {
+            min-width: 100px;
+            flex: 0 1 auto;
+        }
+        .panel.wave {
+            min-width: 100px;
+            flex: 0 1 auto;
+        }
+        .lbl {
+            font-size: .52rem;
+            letter-spacing: .28em;
+            color: rgba(125, 245, 221, .75);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .sub {
+            font-size: .56rem;
+            letter-spacing: .14em;
+            color: rgba(217, 246, 240, .55);
+            margin-top: .1rem;
+            white-space: nowrap;
+        }
+        .sub b {
+            color: var(--ice);
+        }
+        .big {
+            font-family: "Bungee";
+            font-size: 1.2rem;
+            line-height: 1.1;
+            color: #eafff8;
+            text-shadow: 0 0 18px rgba(61, 242, 207, .45);
+        }
+        .panel.score .big {
+            font-size: 1.3rem;
+        }
+        .hullbar {
+            margin-top: .25rem;
+            width: 100%;
+            min-width: 80px;
+            height: 11px;
+            background: rgba(2, 10, 14, .85);
+            border: 1px solid rgba(61, 242, 207, .35);
+            position: relative;
+            overflow: hidden;
+        }
+        #hullFill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #2fe8bd, #9ffce6);
+            box-shadow: 0 0 14px rgba(61, 242, 207, .55);
+            transition: width .18s ease;
+        }
+        .hullbar::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(90deg, transparent 0 11px, rgba(2, 10, 14, .75) 11px 13px);
+        }
+        .hp.critical #hullFill {
+            background: linear-gradient(90deg, #ff5c4d, #ffc24b);
+            animation: critPulse .5s infinite alternate;
+        }
+        @keyframes critPulse {
+            from {
+                filter: brightness(.8);
+            }
+            to {
+                filter: brightness(1.5);
+            }
+        }
+
+        .hud-btns {
+            pointer-events: auto;
+            display: flex;
+            gap: .4rem;
+            align-items: flex-start;
+            padding-top: .1rem;
+        }
+        .hud-btns button {
+            width: 38px;
+            height: 38px;
+            background: var(--panel);
+            color: var(--cyan);
+            border: 1px solid rgba(61, 242, 207, .35);
+            font-family: "Chakra Petch";
+            font-weight: 700;
+            font-size: .7rem;
+            letter-spacing: .05em;
+            cursor: pointer;
+            transition: .15s;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            touch-action: manipulation;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .hud-btns button:hover {
+            background: #0a2a33;
+            box-shadow: 0 0 16px rgba(61, 242, 207, .35);
+            color: #eafff8;
+        }
+        .hud-btns button:active {
+            transform: scale(.92);
+        }
+        .hud-btns button.muted {
+            color: rgba(217, 246, 240, .35);
+            text-decoration: line-through;
+        }
+
+        #depth {
+            position: fixed;
+            left: .7rem;
+            bottom: .8rem;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            pointer-events: none;
+            z-index: 12;
+        }
+        .depth-rail {
+            width: 6px;
+            height: 50px;
+            background: rgba(2, 10, 14, .8);
+            border: 1px solid rgba(61, 242, 207, .3);
+            position: relative;
+            overflow: hidden;
+        }
+        #depthFill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: var(--cyan);
+            box-shadow: 0 0 10px rgba(61, 242, 207, .6);
+        }
+        #depth .lbl {
+            display: block;
+            font-size: .48rem;
+        }
+        #depthVal {
+            font-family: "Bungee";
+            font-size: .8rem;
+            color: #eafff8;
+        }
+
+        #combo {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            pointer-events: none;
+            font-family: "Bungee";
+            font-size: 1.8rem;
+            color: var(--amber);
+            opacity: 0;
+            text-shadow: 0 0 22px rgba(255, 194, 75, .6);
+            transition: opacity .3s;
+        }
+        #combo.on {
+            opacity: 1;
+        }
+        #combo.pop {
+            animation: comboPop .3s cubic-bezier(.2, 1.6, .4, 1);
+        }
+        @keyframes comboPop {
+            0% {
+                transform: translateX(-50%) scale(1.7);
+            }
+            100% {
+                transform: translateX(-50%) scale(1);
+            }
+        }
+
+        #banner {
+            position: fixed;
+            top: 18%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 13;
+            pointer-events: none;
+            font-family: "Bungee";
+            font-size: clamp(1rem, 3.5vw, 2.2rem);
+            letter-spacing: .18em;
+            color: #eafff8;
+            text-shadow: 0 0 26px rgba(61, 242, 207, .55), 0 3px 0 rgba(2, 10, 14, .8);
+            opacity: 0;
+            white-space: nowrap;
+            text-align: center;
+        }
+        #banner.show {
+            animation: bannerIn 2.3s ease forwards;
+        }
+        @keyframes bannerIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) scale(.82);
+                letter-spacing: .6em;
+            }
+            14% {
+                opacity: 1;
+                letter-spacing: .18em;
+            }
+            82% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) scale(1.05);
+            }
+        }
+
+        /* ----- screens ----- */
+        .screen {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .4s, visibility .4s;
+            background: radial-gradient(ellipse at 50% 40%, rgba(2, 14, 20, .5), rgba(1, 6, 10, .86));
+            touch-action: auto;
+        }
+        .screen.show {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .dossier {
+            position: relative;
+            width: min(760px, 94vw);
+            max-height: 92vh;
+            overflow-y: auto;
+            background: linear-gradient(160deg, rgba(6, 28, 38, .96), rgba(3, 15, 22, .96));
+            border: 1px solid rgba(61, 242, 207, .35);
+            clip-path: polygon(22px 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%, 0 22px);
+            padding: clamp(1rem, 3.5vw, 2.2rem);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 60px rgba(61, 242, 207, .07);
+            -webkit-overflow-scrolling: touch;
+        }
+        .dossier::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 120px;
+            height: 5px;
+            background: var(--amber);
+        }
+        .tab {
+            position: absolute;
+            top: 14px;
+            right: 22px;
+            font-size: .55rem;
+            letter-spacing: .3em;
+            color: rgba(255, 194, 75, .85);
+            font-weight: 700;
+        }
+        .kicker {
+            font-size: .55rem;
+            letter-spacing: .42em;
+            color: var(--cyan);
+            font-weight: 700;
+            margin: 0 0 .6rem;
+        }
+        .kicker::after {
+            content: "▮";
+            animation: blink 1.1s steps(1) infinite;
+            margin-left: .4rem;
+        }
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+        h1.logo {
+            font-family: "Bungee";
+            margin: 0;
+            line-height: .95;
+            font-size: clamp(2rem, 8vw, 4.2rem);
+            color: #eafff8;
+            text-shadow: 0 0 34px rgba(61, 242, 207, .35), 0 4px 0 #041318;
+        }
+        h1.logo em {
+            font-style: normal;
+            color: var(--cyan);
+            text-shadow: 0 0 34px rgba(61, 242, 207, .7);
+        }
+        .tag {
+            margin: .7rem 0 1.2rem;
+            max-width: 52ch;
+            color: rgba(217, 246, 240, .8);
+            font-size: clamp(.8rem, 2vw, .95rem);
+            line-height: 1.5;
+        }
+        .tag b {
+            color: var(--amber);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 1.2rem;
+        }
+        @media(max-width:680px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .btnrow {
+            display: flex;
+            gap: .7rem;
+            flex-wrap: wrap;
+            margin: .3rem 0 1rem;
+        }
+        .btn {
+            font-family: "Bungee";
+            font-size: .9rem;
+            letter-spacing: .08em;
+            padding: .7rem 1.4rem;
+            border: 0;
+            cursor: pointer;
+            clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+            transition: transform .15s, box-shadow .15s, background .15s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active {
+            transform: translateY(2px);
+        }
+        .btn-primary {
+            background: var(--amber);
+            color: #180e00;
+            box-shadow: 0 8px 28px rgba(255, 194, 75, .28);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 34px rgba(255, 194, 75, .45);
+            background: #ffd06e;
+        }
+        .btn-primary:active {
+            transform: translateY(0px) scale(.96);
+        }
+        .btn-ghost {
+            background: transparent;
+            color: #7df5dd;
+            box-shadow: inset 0 0 0 1.5px var(--cyan-dim);
+        }
+        .btn-ghost:hover {
+            background: rgba(10, 42, 51, .8);
+            box-shadow: inset 0 0 0 1.5px var(--cyan), 0 0 22px rgba(61, 242, 207, .25);
+            transform: translateY(-2px);
+        }
+        .btn-ghost:active {
+            transform: translateY(0px) scale(.96);
+        }
+        .btn-exit {
+            background: transparent;
+            color: var(--coral);
+            box-shadow: inset 0 0 0 1.5px rgba(255, 106, 77, .35);
+        }
+        .btn-exit:hover {
+            background: rgba(51, 10, 10, .8);
+            box-shadow: inset 0 0 0 1.5px var(--coral), 0 0 22px rgba(255, 106, 77, .25);
+            transform: translateY(-2px);
+        }
+
+        .sys {
+            font-size: .62rem;
+            letter-spacing: .2em;
+            color: rgba(125, 245, 221, .8);
+            font-weight: 700;
+            margin: 0 0 .4rem;
+        }
+        .ctl {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .6rem;
+            padding: .35rem 0;
+            border-bottom: 1px dashed rgba(61, 242, 207, .16);
+            font-size: .75rem;
+            color: rgba(217, 246, 240, .82);
+        }
+        kbd {
+            font-family: "Chakra Petch";
+            font-size: .62rem;
+            font-weight: 600;
+            border: 1px solid rgba(61, 242, 207, .4);
+            background: #06222c;
+            color: var(--cyan);
+            padding: .1rem .4rem;
+            border-radius: 3px;
+            box-shadow: 0 2px 0 rgba(61, 242, 207, .25);
+            display: inline-block;
+        }
+        .record-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            margin-top: .8rem;
+            padding: .3rem .7rem;
+            border: 1px solid rgba(255, 194, 75, .45);
+            color: var(--amber);
+            font-size: .65rem;
+            letter-spacing: .2em;
+            font-weight: 700;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        }
+
+        .brief {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .45s ease;
+        }
+        .brief.open {
+            max-height: 600px;
+        }
+        .intel {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .35rem 0;
+            border-bottom: 1px dashed rgba(61, 242, 207, .14);
+            font-size: .75rem;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            flex: none;
+            box-shadow: 0 0 10px currentColor;
+            transform: rotate(45deg);
+        }
+        .intel .nm {
+            font-weight: 700;
+            letter-spacing: .08em;
+            min-width: 110px;
+            font-size: .7rem;
+        }
+        .intel .ds {
+            color: rgba(217, 246, 240, .6);
+            flex: 1;
+            font-size: .7rem;
+        }
+        .intel .pt {
+            font-family: "Bungee";
+            font-size: .7rem;
+            color: var(--amber);
+        }
+
+        .foot {
+            margin-top: 1rem;
+            font-size: .55rem;
+            letter-spacing: .22em;
+            color: rgba(217, 246, 240, .35);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: .6rem;
+            margin: 1rem 0 1.2rem;
+        }
+        .stat {
+            background: rgba(2, 12, 18, .7);
+            border: 1px solid rgba(61, 242, 207, .22);
+            padding: .6rem .7rem;
+            clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+        }
+        .stat .lbl {
+            display: block;
+            margin-bottom: .2rem;
+            font-size: .5rem;
+        }
+        .stat .v {
+            font-family: "Bungee";
+            font-size: 1.1rem;
+            color: #eafff8;
+        }
+
+        .over-title {
+            font-family: "Bungee";
+            font-size: clamp(1.8rem, 7vw, 3.2rem);
+            margin: 0;
+            color: var(--coral);
+            text-shadow: 0 0 36px rgba(255, 106, 77, .5);
+        }
+        #recordBadge {
+            display: none;
+            margin-bottom: .6rem;
+            padding: .3rem .8rem;
+            background: var(--amber);
+            color: #180e00;
+            font-family: "Bungee";
+            font-size: .7rem;
+            letter-spacing: .1em;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            animation: critPulse .6s infinite alternate;
+        }
+        #recordBadge.on {
+            display: inline-block;
+        }
+
+        /* ----- touch controls overlay ----- */
+        #touchOverlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+            touch-action: none;
+        }
+        #touchOverlay.active {
+            pointer-events: auto;
+        }
+        #touchOverlay .half {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            touch-action: none;
+        }
+        #touchOverlay .half-left {
+            left: 0;
+        }
+        #touchOverlay .half-right {
+            right: 0;
+        }
+
+        /* joystick base (left) */
+        #joyBase {
+            position: fixed;
+            left: 60px;
+            bottom: 70px;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: rgba(4, 22, 30, .5);
+            border: 2px solid rgba(61, 242, 207, .2);
+            z-index: 16;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .3s;
+            transform: translate(-50%, -50%);
+        }
+        #joyBase.show {
+            opacity: 1;
+        }
+        #joyThumb {
+            position: fixed;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(61, 242, 207, .2);
+            border: 2px solid var(--cyan);
+            z-index: 17;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .2s;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 24px rgba(61, 242, 207, .15);
+        }
+        #joyThumb.show {
+            opacity: 1;
+        }
+
+        /* ----- right joystick (aim + fire) ----- */
+        #joyRightBase {
+            position: fixed;
+            right: 60px;
+            bottom: 70px;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: rgba(30, 22, 4, .4);
+            border: 2px solid rgba(255, 194, 75, .2);
+            z-index: 16;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .3s;
+            transform: translate(-50%, -50%);
+        }
+        #joyRightBase.show {
+            opacity: 1;
+        }
+        #joyRightThumb {
+            position: fixed;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 194, 75, .15);
+            border: 2px solid var(--amber);
+            z-index: 17;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .2s;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 24px rgba(255, 194, 75, .15);
+        }
+        #joyRightThumb.show {
+            opacity: 1;
+        }
+
+        /* fire ring indicator on right joystick */
+        #fireRing {
+            position: fixed;
+            border-radius: 50%;
+            z-index: 16;
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(255, 194, 75, .5);
+            transition: opacity .2s, transform .1s, width .1s, height .1s;
+        }
+        #fireRing.show {
+            opacity: 1;
+        }
+
+        /* reticle for touch aim */
+        #reticle {
+            position: fixed;
+            width: 32px;
+            height: 32px;
+            border: 2px solid rgba(255, 194, 75, .6);
+            border-radius: 50%;
+            z-index: 16;
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: opacity .15s;
+        }
+        #reticle::after {
+            content: "";
+            position: absolute;
+            inset: 10px;
+            background: rgba(255, 194, 75, .5);
+            border-radius: 50%;
+        }
+        #reticle.show {
+            opacity: 1;
+        }
+
+        #touchHint {
+            display: none;
+            position: fixed;
+            bottom: .7rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 18;
+            font-size: .55rem;
+            letter-spacing: .2em;
+            color: rgba(125, 245, 221, .6);
+            background: var(--panel);
+            border: 1px solid rgba(61, 242, 207, .25);
+            padding: .3rem .8rem;
+            white-space: nowrap;
+            pointer-events: none;
+            border-radius: 4px;
+            text-align: center;
+            max-width: 90vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media(pointer:coarse) {
+            #touchHint {
+                display: block;
+            }
+            #joyBase.show,
+            #joyThumb.show,
+            #joyRightBase.show,
+            #joyRightThumb.show {
+                display: flex;
+            }
+        }
+
+        /* mobile tweaks */
+        @media(max-width:500px) {
+            .panel {
+                padding: .3rem .5rem .35rem;
+                min-width: 70px;
+            }
+            .panel.hp {
+                min-width: 90px;
+            }
+            .panel.score .big {
+                font-size: 1rem;
+            }
+            .hud-btns button {
+                width: 32px;
+                height: 32px;
+                font-size: .6rem;
+            }
+            #joyBase {
+                width: 80px;
+                height: 80px;
+                left: 45px;
+                bottom: 55px;
+            }
+            #joyThumb {
+                width: 34px;
+                height: 34px;
+            }
+            #joyRightBase {
+                width: 80px;
+                height: 80px;
+                right: 45px;
+                bottom: 55px;
+            }
+            #joyRightThumb {
+                width: 34px;
+                height: 34px;
+            }
+            #depth {
+                left: .5rem;
+                bottom: .6rem;
+            }
+            .depth-rail {
+                height: 38px;
+                width: 5px;
+            }
+            #depthVal {
+                font-size: .65rem;
+            }
+            #combo {
+                font-size: 1.4rem;
+                top: 28%;
+            }
+            #banner {
+                top: 16%;
+                font-size: clamp(.8rem, 3vw, 1.4rem);
+            }
+            .hud-top {
+                padding: .4rem .4rem;
+                gap: .3rem;
+            }
+            .intel .nm {
+                min-width: 70px;
+                font-size: .6rem;
+            }
+            .intel .ds {
+                font-size: .6rem;
+            }
+            .intel .pt {
+                font-size: .6rem;
+            }
+            #touchHint {
+                font-size: .45rem;
+                padding: .2rem .6rem;
+                bottom: .4rem;
+            }
+        }
+
+        @media(max-width:380px) {
+            #joyBase {
+                width: 64px;
+                height: 64px;
+                left: 36px;
+                bottom: 44px;
+            }
+            #joyThumb {
+                width: 28px;
+                height: 28px;
+            }
+            #joyRightBase {
+                width: 64px;
+                height: 64px;
+                right: 36px;
+                bottom: 44px;
+            }
+            #joyRightThumb {
+                width: 28px;
+                height: 28px;
+            }
+            .panel {
+                padding: .2rem .4rem .3rem;
+                min-width: 58px;
+            }
+            .panel.hp {
+                min-width: 70px;
+            }
+            .panel.score .big {
+                font-size: .85rem;
+            }
+            .hud-btns button {
+                width: 28px;
+                height: 28px;
+                font-size: .5rem;
+            }
+            .hullbar {
+                height: 8px;
+            }
+            #depthVal {
+                font-size: .55rem;
+            }
+            .depth-rail {
+                height: 30px;
+            }
+            #touchHint {
+                font-size: .4rem;
+                padding: .15rem .5rem;
+            }
+        }
+
+        /* landscape phone warning */
+        @media(max-height:450px) and (orientation:landscape) {
+            #touchHint {
+                display: none !important;
+            }
+            #joyBase {
+                width: 60px;
+                height: 60px;
+                left: 40px;
+                bottom: 30px;
+            }
+            #joyThumb {
+                width: 26px;
+                height: 26px;
+            }
+            #joyRightBase {
+                width: 60px;
+                height: 60px;
+                right: 40px;
+                bottom: 30px;
+            }
+            #joyRightThumb {
+                width: 26px;
+                height: 26px;
+            }
+            .hud-top {
+                padding: .2rem .3rem;
+                gap: .2rem;
+            }
+            .panel {
+                padding: .15rem .4rem .2rem;
+                min-width: 50px;
+            }
+            .panel.hp {
+                min-width: 60px;
+            }
+            .panel.score .big {
+                font-size: .7rem;
+            }
+            .hud-btns button {
+                width: 24px;
+                height: 24px;
+                font-size: .45rem;
+            }
+            .hullbar {
+                height: 6px;
+                min-width: 40px;
+            }
+            #depth {
+                display: none;
+            }
+            #combo {
+                font-size: 1rem;
+                top: 20%;
+            }
+            #banner {
+                top: 12%;
+                font-size: clamp(.6rem, 2vw, 1rem);
+            }
+        }
+
+        /* ----- Settings & About modal enhancements ----- */
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: .85rem 1.1rem;
+            background: rgba(61, 242, 207, .05);
+            border: 1px solid rgba(61, 242, 207, .22);
+            margin-bottom: .8rem;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            transition: background .2s, border-color .2s;
+        }
+        .setting-row:hover {
+            background: rgba(61, 242, 207, .09);
+            border-color: rgba(61, 242, 207, .4);
+        }
+        .setting-row .title {
+            font-weight: 700;
+            color: var(--amber);
+            font-size: clamp(.85rem, 2.2vw, .95rem);
+            margin-bottom: .2rem;
+            letter-spacing: .05em;
+        }
+        .setting-row .desc {
+            font-size: clamp(.68rem, 1.8vw, .75rem);
+            color: rgba(217, 246, 240, .75);
+            line-height: 1.4;
+            max-width: 42ch;
+        }
+        .about-desc {
+            margin: .5rem 0 1rem;
+            line-height: 1.6;
+            color: rgba(217, 246, 240, .9);
+            font-size: clamp(.85rem, 2.1vw, .95rem);
+            max-width: 58ch;
+        }
+        .about-list {
+            margin: .4rem 0 1.2rem 1.2rem;
+            padding: 0;
+            color: rgba(217, 246, 240, .85);
+            font-size: clamp(.78rem, 1.9vw, .88rem);
+            line-height: 1.55;
+        }
+        .about-list li {
+            margin-bottom: .6rem;
+        }
+        .about-list li b {
+            color: var(--cyan);
+        }
+        .orientation-notice-box {
+            margin-top: .8rem;
+            padding: .6rem .8rem;
+            background: rgba(255, 194, 75, .08);
+            border: 1px solid rgba(255, 194, 75, .3);
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            transition: border-color .3s, background .3s;
+        }
+        .orientation-notice-box .nt-title {
+            font-size: .56rem;
+            letter-spacing: .2em;
+            color: var(--amber);
+            font-weight: 700;
+        }
+        .orientation-notice-box .nt-desc {
+            font-size: .74rem;
+            color: var(--ice);
+            margin-top: .25rem;
+            line-height: 1.4;
+        }
+        .hud-notice {
+            position: fixed;
+            top: 4.8rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            background: rgba(255, 194, 75, .15);
+            border: 1px solid var(--amber);
+            color: var(--ice);
+            font-size: .65rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            padding: .4rem .9rem;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .4s;
+            white-space: nowrap;
+            max-width: 90vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .hud-notice.show {
+            opacity: 1;
+        }
+
+        /* Responsive refinements for small/portrait devices */
+        @media (max-width: 580px) {
+            .setting-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: .6rem;
+            }
+            .setting-row button {
+                align-self: flex-end;
+                width: 100%;
+            }
+            .dossier {
+                max-height: 94vh;
+                padding: 1.1rem;
+            }
+        }
+
+        /* ----- Portrait Lock Overlay ----- */
+        #portraitLockOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: #020a10;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        #portraitLockOverlay .lock-card {
+            max-width: 420px;
+            background: linear-gradient(160deg, rgba(6, 28, 38, .98), rgba(3, 15, 22, .98));
+            border: 2px solid var(--amber);
+            padding: 2rem 1.5rem;
+            clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .8), 0 0 40px rgba(255, 194, 75, .15);
+        }
+        #portraitLockOverlay .lock-icon {
+            font-size: 2.8rem;
+            margin-bottom: 0.8rem;
+            animation: lockSpin 2.5s ease-in-out infinite;
+        }
+        @keyframes lockSpin {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+        }
+        #portraitLockOverlay .lock-title {
+            font-family: "Bungee";
+            font-size: clamp(1.3rem, 5vw, 1.8rem);
+            color: var(--amber);
+            margin: 0 0 0.8rem;
+            letter-spacing: .08em;
+        }
+        #portraitLockOverlay .lock-desc {
+            color: var(--ice);
+            font-size: 0.88rem;
+            line-height: 1.5;
+            margin: 0 0 1.4rem;
+        }
+        #portraitLockOverlay .lock-desc b {
+            color: var(--cyan);
+        }
+        #portraitLockOverlay .lock-pill {
+            display: inline-block;
+            padding: 0.55rem 1.1rem;
+            background: rgba(255, 194, 75, .12);
+            border: 1px solid var(--amber);
+            color: var(--amber);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: .15em;
+        }
+
+        /* ----- Side-by-Side Multi-Column Modal Grids (Briefing, Settings, About) ----- */
+        .briefing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.2rem;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 1.2rem;
+        }
+        @media (max-width: 680px) and (orientation: portrait) {
+            .briefing-grid, .settings-grid, .about-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ----- Ultra-Compact Main Window sizing for Mobile & Tablet screens in Landscape ----- */
+        @media (max-height: 580px), (max-width: 950px) and (orientation: landscape) {
+            .dossier {
+                padding: .5rem 1rem !important;
+                max-height: 96vh !important;
+                width: min(880px, 98vw) !important;
+            }
+            .briefing-grid {
+                grid-template-columns: 1.05fr 0.95fr 1fr !important;
+                gap: 0.8rem !important;
+                align-items: start !important;
+            }
+            .settings-grid {
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.8rem !important;
+                align-items: center !important;
+            }
+            .about-grid {
+                grid-template-columns: 1.1fr 0.9fr !important;
+                gap: 1rem !important;
+                align-items: start !important;
+            }
+            .briefing-col .intel {
+                margin-bottom: .18rem !important;
+            }
+            .briefing-col .nm {
+                font-size: .6rem !important;
+            }
+            .briefing-col .ds {
+                font-size: .6rem !important;
+                line-height: 1.25 !important;
+            }
+            h1.logo {
+                font-size: clamp(1.3rem, 4.2vw, 2.1rem) !important;
+            }
+            .kicker {
+                margin: 0 0 .25rem !important;
+                font-size: .48rem !important;
+            }
+            .tag {
+                margin: .3rem 0 .5rem !important;
+                font-size: clamp(.7rem, 1.5vw, .8rem) !important;
+                line-height: 1.3 !important;
+            }
+            .btnrow {
+                gap: .4rem !important;
+                margin: .25rem 0 .5rem !important;
+            }
+            .btn {
+                padding: .4rem .9rem !important;
+                font-size: .74rem !important;
+            }
+            .grid {
+                gap: .7rem !important;
+            }
+            .intel {
+                margin-bottom: .2rem !important;
+            }
+            .ctl {
+                padding: .15rem 0 !important;
+            }
+            .orientation-notice-box {
+                padding: .4rem .6rem !important;
+                margin-top: .4rem !important;
+                font-size: .65rem !important;
+            }
+            .setting-row {
+                padding: .5rem .8rem !important;
+                margin-bottom: .4rem !important;
+            }
+            #settingsScreen .dossier, #aboutScreen .dossier {
+                max-width: 580px !important;
+            }
+            .about-desc {
+                margin: .3rem 0 .6rem !important;
+                font-size: clamp(.72rem, 1.6vw, .82rem) !important;
+                line-height: 1.4 !important;
+            }
+        }
+    </style>
+
+
+</head>
+<body>
+    <!-- PORTRAIT LOCK OVERLAY (Mobile & Tablet) -->
+    <div id="portraitLockOverlay">
+        <div class="lock-card">
+            <div class="lock-icon">🔄</div>
+            <h2 class="lock-title">LANDSCAPE REQUIRED</h2>
+            <p class="lock-desc">
+                <b>DEEPCURRENT</b> is locked to <b>Landscape orientation</b> on mobile and tablet to ensure the full arena, joysticks, and menus are visible.
+            </p>
+            <div class="lock-pill">📱 PLEASE ROTATE YOUR DEVICE HORIZONTALLY</div>
+        </div>
+    </div>
+    <canvas id="game"></canvas>
+
+    <div id="vignette"></div>
+    <div id="scan"></div>
+    <div id="critFx"></div>
+    <div id="flash"></div>
+
+    <!-- HUD -->
+    <div id="hud" class="off">
+        <div class="hud-top">
+            <div class="panel hp" id="hpPanel">
+                <div class="lbl">HULL</div>
+                <div class="hullbar"><div id="hullFill"></div></div>
+            </div>
+            <div class="panel score">
+                <div class="lbl">SCORE</div>
+                <div class="big" id="scoreVal">0</div>
+                <div class="sub">BEST <b id="bestVal">0</b></div>
+            </div>
+            <div class="panel wave">
+                <div class="lbl">WAVE <span id="waveVal">01</span></div>
+                <div class="sub">HOSTILE <b id="contactVal">0</b></div>
+            </div>
+            <div class="hud-btns">
+                <button id="pauseBtn" aria-label="Pause">❚❚</button>
+                <button id="muteBtn" aria-label="Mute">SND</button>
+            </div>
+        </div>
+        <div id="depth">
+            <div class="depth-rail"><div id="depthFill"></div></div>
+            <div><span class="lbl">DEPTH</span> <span id="depthVal">420 M</span></div>
+        </div>
+        <div id="hudOrientationNotice" class="hud-notice">📱 OPTIMAL VIEW: ROTATE DEVICE TO LANDSCAPE FOR WIDER ARENA VIEW</div>
+    </div>
+
+    <div id="combo"></div>
+    <div id="banner"></div>
+
+    <!-- Touch Overlay -->
+    <div id="touchOverlay">
+        <div class="half half-left" id="touchLeft"></div>
+        <div class="half half-right" id="touchRight"></div>
+    </div>
+
+    <!-- Left Joystick (Move) -->
+    <div id="joyBase"></div>
+    <div id="joyThumb"></div>
+
+    <!-- Right Joystick (Aim + Fire) -->
+    <div id="joyRightBase"></div>
+    <div id="joyRightThumb"></div>
+    <div id="fireRing"></div>
+
+    <!-- Reticle -->
+    <div id="reticle"></div>
+
+    <div id="touchHint">⬅️ MOVE &nbsp;·&nbsp; ➡️ AIM &amp; FIRE &nbsp;·&nbsp; 🎯 DRAG RIGHT JOYSTICK</div>
+
+    <!-- TITLE -->
+    <div class="screen show" id="titleScreen">
+        <div class="dossier">
+            <div class="tab">DSV-07 // “MANTIS”</div>
+            <p class="kicker">HYDRONAULT COMBAT PROTOCOL — SECTOR 9 TRENCH</p>
+            <h1 class="logo">DEEP<em>CURRENT</em></h1>
+            <div class="grid">
+                <div>
+                    <p class="tag">The salvage beacon died at <b>3,000&nbsp;m</b>. Something down here ate it.
+                        Pilot the last submersible into the trench, burn through the abyssal swarm,
+                        and keep your hull in one piece. <b>Every wave dives deeper.</b></p>
+                    <div class="btnrow">
+                        <button class="btn btn-primary" id="diveBtn">▶ &nbsp;DIVE</button>
+                        <button class="btn btn-ghost" id="briefBtn">BRIEFING</button>
+                        <button class="btn btn-ghost" id="settingsBtn">⚙️ &nbsp;SETTINGS</button>
+                        <button class="btn btn-ghost" id="aboutBtn">ℹ️ &nbsp;ABOUT</button>
+                    </div>
+
+                </div>
+                <div>
+                    <div class="sys">CONTROLS</div>
+                    <div class="ctl"><span>Maneuver</span><span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></span></div>
+                    <div class="ctl"><span>Aim</span><span><kbd>MOUSE</kbd></span></div>
+                    <div class="ctl"><span>Fire</span><span><kbd>HOLD LMB</kbd> / <kbd>SPACE</kbd></span></div>
+                    <div class="ctl"><span>Pause</span><span><kbd>P</kbd> / <kbd>ESC</kbd></span></div>
+                    <div class="ctl"><span>Mute</span><span><kbd>M</kbd></span></div>
+                    <div class="record-chip">◆ BEST SALVAGE&nbsp;&nbsp;<span id="titleBest">0</span></div>
+                    <div style="margin-top:.8rem;padding:.5rem .6rem;background:rgba(61,242,207,.06);border:1px solid rgba(61,242,207,.15);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);">
+                        <div style="font-size:.55rem;letter-spacing:.2em;color:rgba(125,245,221,.6);">📱 TOUCH ENABLED</div>
+                        <div style="font-size:.7rem;color:var(--cyan);margin-top:.15rem;">Twin-stick · Auto-fire · Visual joysticks</div>
+                    </div>
+                    <div class="orientation-notice-box" id="orientationNotice">
+                        <div class="nt-title">🔄 LOCKED TO LANDSCAPE ORIENTATION</div>
+                        <div class="nt-desc">
+                            Best experienced in <b>Landscape</b> on mobile &amp; tablet. All screen sizes fully supported.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="foot">DEEPCURRENT v1.1 — KILLS CHAIN COMBO · GRAB GLOWING MOTES · DIVE SAFE</p>
+        </div>
+    </div>
+
+    <!-- PAUSE -->
+    <div class="screen" id="pauseScreen">
+        <div class="dossier" style="width:min(460px,94vw)">
+            <p class="kicker">DSV-07 STATUS</p>
+            <h1 class="logo" style="font-size:clamp(1.6rem,5.5vw,2.6rem)">SYSTEMS <em>HELD</em></h1>
+            <p class="tag">Reactor idle. The trench waits for no one.</p>
+            <div class="btnrow">
+                <button class="btn btn-primary" id="resumeBtn">RESUME</button>
+                <button class="btn btn-ghost" id="pauseRestartBtn">RESTART</button>
+                <button class="btn btn-ghost" id="pauseSettingsBtn">⚙️ &nbsp;SETTINGS</button>
+                <button class="btn btn-ghost" id="pauseMuteBtn">SOUND</button>
+                <button class="btn btn-exit" id="pauseExitBtn">✕ EXIT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div class="screen" id="overScreen">
+        <div class="dossier" style="width:min(560px,94vw)">
+            <p class="kicker">TELEMETRY RECOVERED</p>
+            <span id="recordBadge">★ NEW RECORD</span>
+            <h2 class="over-title">SIGNAL LOST</h2>
+            <p class="tag" id="overLine">The trench keeps what it takes.</p>
+            <div class="stats">
+                <div class="stat"><span class="lbl">SALVAGE</span><span class="v" id="finalScore">0</span></div>
+                <div class="stat"><span class="lbl">WAVE</span><span class="v" id="finalWave">1</span></div>
+                <div class="stat"><span class="lbl">KILLS</span><span class="v" id="finalKills">0</span></div>
+                <div class="stat"><span class="lbl">DEPTH</span><span class="v" id="finalDepth">0 M</span></div>
+            </div>
+            <div class="btnrow">
+                <button class="btn btn-primary" id="againBtn">↻ &nbsp;RE-DIVE</button>
+                <button class="btn btn-exit" id="overExitBtn">✕ EXIT</button>
+            </div>
+            <p class="foot">PRESS <kbd>ENTER</kbd> TO DIVE AGAIN</p>
+        </div>
+    </div>
+
+    <!-- BRIEFING SCREEN -->
+    <div class="screen" id="briefingScreen" style="z-index: 45;">
+        <div class="dossier" style="width:min(900px,98vw)">
+            <div class="tab">DSV-07 // TRENCH INTEL</div>
+            <p class="kicker">HYDRONAULT BRIEFING &amp; COMBAT SYSTEMS</p>
+            <h2 class="over-title" style="font-size:clamp(1.4rem,4.5vw,2.4rem);margin-bottom:.3rem;">BRIEFING</h2>
+            
+            <div class="briefing-grid">
+                <div class="briefing-col">
+                    <div class="sys" style="margin-bottom:.4rem;">THREAT INTEL</div>
+                    <div class="intel"><span class="dot" style="color:#ff8a5c;background:#ff8a5c"></span><span class="nm">DRIFT MINE</span><span class="ds">Proximity bloom. Do not touch.</span><span class="pt">40</span></div>
+                    <div class="intel"><span class="dot" style="color:#3df2cf;background:#3df2cf"></span><span class="nm">ANGLER DRONE</span><span class="ds">Homing bite, follows the light.</span><span class="pt">80</span></div>
+                    <div class="intel"><span class="dot" style="color:#9dff8a;background:#9dff8a"></span><span class="nm">INK SPITTER</span><span class="ds">Keeps range, spits hot bolts.</span><span class="pt">120</span></div>
+                    <div class="intel"><span class="dot" style="color:#ffc24b;background:#ffc24b"></span><span class="nm">LEVIATHAN SHARD</span><span class="ds">Radial volleys. Bring the spread.</span><span class="pt">400</span></div>
+                </div>
+                <div class="briefing-col">
+                    <div class="sys" style="margin-bottom:.4rem;">SALVAGE CAPSULES</div>
+                    <div class="intel"><span class="dot" style="color:#ffc24b;background:#ffc24b"></span><span class="nm">+ HULL</span><span class="ds">Welds 35 integrity back on.</span></div>
+                    <div class="intel"><span class="dot" style="color:#ffc24b;background:#ffc24b"></span><span class="nm">S SHIELD</span><span class="ds">6s of untouchable sonar skin.</span></div>
+                    <div class="intel"><span class="dot" style="color:#ffc24b;background:#ffc24b"></span><span class="nm">R RAPID</span><span class="ds">Fire rate ×2.2 for 7s.</span></div>
+                    <div class="intel"><span class="dot" style="color:#ffc24b;background:#ffc24b"></span><span class="nm">W WIDE</span><span class="ds">Triple-bolt spread for 7s.</span></div>
+                </div>
+                <div class="briefing-col">
+                    <div class="sys" style="margin-bottom:.4rem;">TOUCH CONTROLS</div>
+                    <div class="intel"><span style="font-size:1.1rem;line-height:1;">⬅️</span><span class="nm">MOVE</span><span class="ds">Drag left joystick / left half</span></div>
+                    <div class="intel"><span style="font-size:1.1rem;line-height:1;">🎯</span><span class="nm">AIM + FIRE</span><span class="ds">Drag right joystick / right half</span></div>
+                    <div class="intel"><span style="font-size:1.1rem;line-height:1;">🔥</span><span class="nm">AUTO-FIRE</span><span class="ds">Active while right joystick is dragged</span></div>
+                    <div class="btnrow" style="margin-top:.7rem;border-top:1px solid rgba(61,242,207,.15);padding-top:.5rem;">
+                        <button class="btn btn-primary" id="briefingCloseBtn">✓ &nbsp;CLOSE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div class="screen" id="settingsScreen" style="z-index: 45;">
+        <div class="dossier" style="width:min(680px,96vw)">
+            <div class="tab">DSV-07 // CONFIG</div>
+            <p class="kicker">SYSTEM PREFERENCES</p>
+            <h2 class="over-title" style="font-size:clamp(1.4rem,4.5vw,2.4rem);margin-bottom:.3rem;">SETTINGS</h2>
+            
+            <div class="settings-grid">
+                <div class="settings-col" id="touchConfigSection">
+                    <div class="sys" style="margin-bottom:.3rem;">TOUCH CONTROL MECHANICS</div>
+                    <div class="setting-row" style="margin-bottom:0;">
+                        <div>
+                            <div class="title">FIXED JOYSTICK</div>
+                            <div class="desc">
+                                Fixed: Anchored in bottom corners.<br>
+                                Dynamic: Appear where you touch.
+                            </div>
+                        </div>
+                        <button class="btn btn-ghost" id="toggleFixedJoyBtn" style="min-width:130px;text-align:center;">OFF (DYNAMIC)</button>
+                    </div>
+                </div>
+                <div class="settings-col">
+                    <div class="sys" style="margin-bottom:.3rem;">AUDIO SYSTEMS</div>
+                    <div class="setting-row" style="margin-bottom:0;">
+                        <div>
+                            <div class="title">SOUND EFFECTS</div>
+                            <div class="desc">Abyssal combat audio &amp; weapon feedback.</div>
+                        </div>
+                        <button class="btn btn-ghost" id="toggleSoundBtn" style="min-width:130px;text-align:center;">ON</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btnrow" style="margin-top:.7rem;">
+                <button class="btn btn-primary" id="settingsCloseBtn">✓ &nbsp;APPLY &amp; CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABOUT SCREEN -->
+    <div class="screen" id="aboutScreen" style="z-index: 45;">
+        <div class="dossier" style="width:min(760px,96vw)">
+            <div class="tab">DSV-07 // DOSSIER</div>
+            <p class="kicker">PROJECT OVERVIEW &amp; CREDITS</p>
+            <h2 class="over-title" style="font-size:clamp(1.4rem,4.5vw,2.4rem);margin-bottom:.3rem;">ABOUT</h2>
+            
+            <div class="about-grid">
+                <div class="about-col">
+                    <div class="sys" style="margin-bottom:.3rem;">PROJECT MISSION</div>
+                    <p class="about-desc">
+                        <b>DEEPCURRENT</b> is basically a personal project to experiment if it’s possible to create certain control mechanics fit for mobile games.
+                    </p>
+                    <div class="sys" style="margin-bottom:.3rem;">WHAT WE DID &amp; LEARNED</div>
+                    <p class="about-desc" style="margin-bottom:.5rem;">
+                        We tested twin-stick controls on mobile where aiming with the right stick automatically shoots your weapon. From testing on phones and tablets, we learned that clear visual hints (like the aiming target and fire ring) and giving players the choice between fixed or floating joysticks make mobile controls feel smooth, precise, and comfortable.
+                    </p>
+                </div>
+                <div class="about-col">
+                    <div class="sys" style="margin-bottom:.3rem;">DEVELOPER &amp; CREDITS</div>
+                    <div class="dev-card" style="padding:.6rem .8rem;background:rgba(61,242,207,.06);border:1px solid rgba(61,242,207,.25);margin-bottom:.7rem;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);">
+                        <div class="dev-lbl" style="font-size:.55rem;letter-spacing:.25em;color:var(--cyan);font-weight:700;">CREATED BY</div>
+                        <div class="dev-name" style="font-size:.95rem;color:var(--amber);font-weight:700;margin-top:.15rem;">Emmanuel (Emmre)</div>
+                        <div class="dev-role" style="font-size:.7rem;color:rgba(217,246,240,.75);margin-top:.2rem;">Game Design · Touch Mechanics R&amp;D</div>
+                    </div>
+                    <div class="sys" style="margin-bottom:.3rem;">STUDIO &amp; SUPPORT</div>
+                    <div class="btnrow" style="margin-bottom:.6rem;flex-wrap:wrap;gap:.5rem;">
+                        <a href="https://www.facebook.com/profile.php?id=61577297810780" target="_blank" rel="noopener noreferrer" class="btn btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;">
+                            <span>🌐</span> <span>STUDIO PAGE</span>
+                        </a>
+                        <a href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=thelandfathers%40gmail.com" target="_blank" rel="noopener noreferrer" class="btn btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;" id="supportEmailBtn" title="thelandfathers@gmail.com">
+                            <span>✉️</span> <span>SUPPORT</span>
+                        </a>
+                    </div>
+                    <div class="btnrow" style="margin-top:.4rem;border-top:1px solid rgba(61,242,207,.15);padding-top:.4rem;">
+                        <button class="btn btn-primary" id="aboutCloseBtn">✓ &nbsp;CLOSE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+
+            /* ================= CANVAS SETUP ================= */
+            const cvs = document.getElementById('game'),
+                ctx = cvs.getContext('2d');
+            let W = innerWidth,
+                H = innerHeight,
+                DPR = 1;
+
+            let zoomScale = 1;
+
+            function resize() {
+                const winW = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                const winH = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+                
+                // Keep logical game world within balanced resolution range [720x405 to 1440x810]
+                // - Prevents PC zoom-out from expanding spawn range or making screen huge
+                // - Prevents small screens from making enemies spawn too close or feeling tiny
+                const minLogicalW = 720;
+                const minLogicalH = 405;
+                const maxLogicalW = 1440;
+                const maxLogicalH = 810;
+                
+                let scaleX = winW < minLogicalW ? winW / minLogicalW : (winW > maxLogicalW ? winW / maxLogicalW : 1);
+                let scaleY = winH < minLogicalH ? winH / minLogicalH : (winH > maxLogicalH ? winH / maxLogicalH : 1);
+                
+                zoomScale = Math.min(scaleX, scaleY) < 1 ? Math.min(scaleX, scaleY) : Math.max(1, Math.max(scaleX, scaleY));
+
+                W = Math.floor(winW / zoomScale);
+                H = Math.floor(winH / zoomScale);
+                DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+                cvs.width = Math.floor(winW * DPR);
+                cvs.height = Math.floor(winH * DPR);
+                cvs.style.width = winW + 'px';
+                cvs.style.height = winH + 'px';
+                ctx.setTransform(DPR * zoomScale, 0, 0, DPR * zoomScale, 0, 0);
+            }
+            addEventListener('resize', resize);
+            resize();
+
+            const rand = (a, b) => a + Math.random() * (b - a);
+            const randi = n => Math.floor(Math.random() * n);
+            const pick = a => a[randi(a.length)];
+            const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+            const dist2 = (x1, y1, x2, y2) => { const dx = x2 - x1,
+                    dy = y2 - y1; return dx * dx + dy * dy; };
+            const TAU = Math.PI * 2;
+
+            /* ================= STATE ================= */
+            let mode = 'title'; // title | playing | paused | over
+            let wallT = 0,
+                simT = 0;
+            let score = 0,
+                shownScore = 0,
+                kills = 0,
+                best = 0,
+                depth = 420;
+            let combo = 0,
+                comboT = 0;
+            let wave = 0,
+                waveState = 'idle',
+                announceT = 0,
+                clearT = 0,
+                releaseT = 0,
+                deathT = 0;
+            let shake = 0,
+                muted = false;
+            const bullets = [],
+                ebullets = [],
+                enemies = [],
+                teles = [],
+                orbs = [],
+                caps = [],
+                parts = [],
+                texts = [],
+                queue = [];
+            const p = { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 15, aim: 0, hp: 100, maxhp: 100, fireCd: 0, iframes: 0,
+                shield: 0, rapid: 0, spread: 0, dead: false };
+
+            try { best = parseInt(localStorage.getItem('deepcurrent_best') || '0', 10) || 0; } catch (e) {}
+
+            /* ================= DOM ================= */
+            const $ = id => document.getElementById(id);
+            const hudEl = $('hud'),
+                hullFill = $('hullFill'),
+                hpPanel = $('hpPanel'),
+                scoreVal = $('scoreVal'),
+                bestVal = $('bestVal'),
+                waveVal = $('waveVal'),
+                contactVal = $('contactVal'),
+                depthVal = $('depthVal'),
+                depthFill = $('depthFill'),
+                comboEl = $('combo'),
+                bannerEl = $('banner'),
+                flashEl = $('flash'),
+                titleBest = $('titleBest'),
+                joyBase = $('joyBase'),
+                joyThumb = $('joyThumb'),
+                joyRightBase = $('joyRightBase'),
+                joyRightThumb = $('joyRightThumb'),
+                fireRing = $('fireRing'),
+                reticleEl = $('reticle');
+            titleBest.textContent = best.toLocaleString();
+            bestVal.textContent = best.toLocaleString();
+
+            function show(el, on) { el.classList.toggle('show', !!on); }
+
+            function banner(txt) { bannerEl.textContent = txt;
+                bannerEl.classList.remove('show');
+                void bannerEl.offsetWidth;
+                bannerEl.classList.add('show'); }
+
+            function comboPop() { comboEl.textContent = '×' + combo;
+                comboEl.classList.add('on');
+                comboEl.classList.remove('pop');
+                void comboEl.offsetWidth;
+                comboEl.classList.add('pop'); }
+
+            /* ================= AUDIO ================= */
+            let AC = null,
+                master = null,
+                noiseBuf = null;
+
+            function initAudio() {
+                if (AC) return;
+                try {
+                    AC = new(window.AudioContext || window.webkitAudioContext)();
+                    master = AC.createGain();
+                    master.gain.value = muted ? 0 : 0.16;
+                    master.connect(AC.destination);
+                    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+                    const d = noiseBuf.getChannelData(0);
+                    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+                } catch (e) {}
+            }
+
+            function tone(f0, f1, dur, type, vol, delay) {
+                if (!AC || muted) return;
+                type = type || 'sine';
+                vol = vol || .3;
+                delay = delay || 0;
+                const t = AC.currentTime + delay,
+                    o = AC.createOscillator(),
+                    g = AC.createGain();
+                o.type = type;
+                o.frequency.setValueAtTime(f0, t);
+                o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+                g.gain.setValueAtTime(vol, t);
+                g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+                o.connect(g);
+                g.connect(master);
+                o.start(t);
+                o.stop(t + dur + .03);
+            }
+
+            function noise(dur, vol, freq, delay) {
+                if (!AC || muted) return;
+                delay = delay || 0;
+                const t = AC.currentTime + delay,
+                    s = AC.createBufferSource(),
+                    g = AC.createGain(),
+                    f = AC.createBiquadFilter();
+                s.buffer = noiseBuf;
+                f.type = 'lowpass';
+                f.frequency.value = freq;
+                g.gain.setValueAtTime(vol, t);
+                g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+                s.connect(f);
+                f.connect(g);
+                g.connect(master);
+                s.start(t);
+                s.stop(t + dur + .03);
+            }
+
+            const sfx = {
+                fire() { tone(880, 290, .11, 'triangle', .22); },
+                hit() { noise(.06, .14, 2200); },
+                boom(big) { noise(big ? .6 : .34, big ? .5 : .32, big ? 420 : 600);
+                    tone(big ? 120 : 150, 32, big ? .5 : .3, 'sine', .4); },
+                pickup() { tone(660, 990, .1, 'sine', .22);
+                    tone(990, 1320, .09, 'sine', .16, .07); },
+                power() { tone(330, 660, .12, 'square', .14);
+                    tone(660, 1100, .14, 'square', .12, .09); },
+                hurt() { tone(180, 55, .28, 'sawtooth', .35);
+                    noise(.2, .3, 500); },
+                wave() { tone(190, 620, .42, 'triangle', .2);
+                    tone(380, 1240, .42, 'sine', .1, .05); },
+                shield() { tone(1200, 600, .12, 'sine', .2); }
+            };
+
+            function toggleMute() {
+                muted = !muted;
+                if (master) master.gain.value = muted ? 0 : .16;
+                $('muteBtn').classList.toggle('muted', muted);
+                $('pauseMuteBtn').textContent = muted ? 'SOUND: OFF' : 'SOUND: ON';
+                const soundBtn = $('toggleSoundBtn');
+                if (soundBtn) soundBtn.textContent = muted ? 'OFF' : 'ON';
+            }
+
+            /* ================= INPUT ================= */
+            const keys = {},
+                mouse = { x: W / 2, y: H / 2, down: false };
+            let moveId = null,
+                aimId = null;
+            let stickBase = { x: 0, y: 0 },
+                stickVec = { x: 0, y: 0 };
+            let rightStickBase = { x: 0, y: 0 },
+                rightStickVec = { x: 0, y: 0 };
+            let aimTouch = { x: 0, y: 0 };
+            let touchActive = false;
+
+            // Strictly check for true Android / iOS mobile and tablet touch devices (excludes PC/Mac desktops and laptops)
+            const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                                     (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent) && 'ontouchend' in document);
+            const isTouch = isMobileOrTablet && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+            let fixedJoystick = false;
+            try {
+                fixedJoystick = localStorage.getItem('deepcurrent_fixed_joystick') === 'true';
+            } catch (e) {}
+
+            function getFixedLeftBase() {
+                const marginX = Math.max(75, Math.min(110, W * 0.15));
+                const marginY = Math.max(75, Math.min(110, H * 0.24));
+                return { x: marginX, y: H - marginY };
+            }
+            function getFixedRightBase() {
+                const marginX = Math.max(75, Math.min(110, W * 0.15));
+                const marginY = Math.max(75, Math.min(110, H * 0.24));
+                return { x: W - marginX, y: H - marginY };
+            }
+
+            function updateJoystickAnchors() {
+                if (!isTouch) {
+                    joyBase.classList.remove('show');
+                    joyThumb.classList.remove('show');
+                    joyRightBase.classList.remove('show');
+                    joyRightThumb.classList.remove('show');
+                    return;
+                }
+                if (fixedJoystick) {
+                    const lb = getFixedLeftBase();
+                    const rb = getFixedRightBase();
+                    joyBase.style.left = (lb.x * zoomScale) + 'px';
+                    joyBase.style.top = (lb.y * zoomScale) + 'px';
+                    joyThumb.style.left = (lb.x * zoomScale) + 'px';
+                    joyThumb.style.top = (lb.y * zoomScale) + 'px';
+                    joyRightBase.style.left = (rb.x * zoomScale) + 'px';
+                    joyRightBase.style.top = (rb.y * zoomScale) + 'px';
+                    joyRightThumb.style.left = (rb.x * zoomScale) + 'px';
+                    joyRightThumb.style.top = (rb.y * zoomScale) + 'px';
+                    fireRing.style.left = (rb.x * zoomScale) + 'px';
+                    fireRing.style.top = (rb.y * zoomScale) + 'px';
+                    fireRing.style.width = '110px';
+                    fireRing.style.height = '110px';
+                    joyBase.classList.add('show');
+                    joyRightBase.classList.add('show');
+                    joyBase.style.opacity = '0.55';
+                    joyRightBase.style.opacity = '0.55';
+                } else {
+                    if (moveId === null) {
+                        joyBase.classList.remove('show');
+                        joyThumb.classList.remove('show');
+                    }
+                    if (aimId === null) {
+                        joyRightBase.classList.remove('show');
+                        joyRightThumb.classList.remove('show');
+                    }
+                    joyBase.style.opacity = '1';
+                    joyRightBase.style.opacity = '1';
+                }
+            }
+
+            function toggleFixedJoystick() {
+                fixedJoystick = !fixedJoystick;
+                try {
+                    localStorage.setItem('deepcurrent_fixed_joystick', String(fixedJoystick));
+                } catch (e) {}
+                updateFixedJoyUI();
+                updateJoystickAnchors();
+            }
+
+            function updateFixedJoyUI() {
+                const btn = $('toggleFixedJoyBtn');
+                if (btn) {
+                    btn.textContent = fixedJoystick ? 'ON (FIXED)' : 'OFF (DYNAMIC)';
+                    btn.style.color = fixedJoystick ? 'var(--amber)' : 'var(--cyan)';
+                    btn.style.borderColor = fixedJoystick ? 'var(--amber)' : 'rgba(61,242,207,.3)';
+                }
+            }
+
+            function checkOrientationNotice() {
+                const isPortrait = H > W * 1.02;
+                const noticeEl = $('orientationNotice');
+                const hudNoticeEl = $('hudOrientationNotice');
+                const lockOverlay = $('portraitLockOverlay');
+                if (lockOverlay) {
+                    lockOverlay.style.display = (isTouch && isPortrait) ? 'flex' : 'none';
+                }
+                if (noticeEl) {
+                    noticeEl.style.borderColor = isPortrait ? 'var(--amber)' : 'rgba(255,194,75,.3)';
+                    noticeEl.style.background = isPortrait ? 'rgba(255,194,75,.15)' : 'rgba(255,194,75,.08)';
+                }
+                if (hudNoticeEl) {
+                    if (isTouch && isPortrait && mode === 'playing') {
+                        hudNoticeEl.classList.add('show');
+                    } else {
+                        hudNoticeEl.classList.remove('show');
+                    }
+                }
+            }
+
+            function tryLockLandscape() {
+                if (isTouch && screen && screen.orientation && screen.orientation.lock) {
+                    try {
+                        screen.orientation.lock('landscape').catch(e => {});
+                    } catch (e) {}
+                }
+            }
+            addEventListener('touchstart', tryLockLandscape, { passive: true, once: true });
+            addEventListener('click', tryLockLandscape, { passive: true, once: true });
+
+            // Show touch controls on touch devices
+            if (isTouch) {
+                joyBase.classList.add('show');
+                joyRightBase.classList.add('show');
+            }
+            updateFixedJoyUI();
+
+            function onResizeEntities() {
+                p.x = clamp(p.x, 28, W - 28);
+                p.y = clamp(p.y, 28, H - 28);
+                for (const e of enemies) {
+                    const safeX = Math.min(e.r + 15, W * 0.35);
+                    const safeY = Math.min(e.r + 15, H * 0.35);
+                    e.x = clamp(e.x, safeX, W - safeX);
+                    e.y = clamp(e.y, safeY, H - safeY);
+                }
+                for (const t of teles) {
+                    t.x = clamp(t.x, 40, W - 40);
+                    t.y = clamp(t.y, 40, H - 40);
+                }
+                for (const o of orbs) {
+                    o.x = clamp(o.x, 20, W - 20);
+                    o.y = clamp(o.y, 20, H - 20);
+                }
+                for (const c of caps) {
+                    c.x = clamp(c.x, 25, W - 25);
+                    c.y = clamp(c.y, 25, H - 25);
+                }
+                updateJoystickAnchors();
+                checkOrientationNotice();
+            }
+            addEventListener('resize', onResizeEntities);
+            onResizeEntities();
+
+            // Keyboard
+            addEventListener('keydown', e => {
+                initAudio();
+                if (AC && AC.state === 'suspended') AC.resume();
+                if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) >= 0) e.preventDefault();
+                keys[e.code] = true;
+                if (e.code === 'KeyM') toggleMute();
+                if (e.code === 'KeyP' || e.code === 'Escape') {
+                    if (mode === 'playing') pause();
+                    else if (mode === 'paused') resume();
+                }
+                if (e.code === 'Enter') { if (mode === 'title' || mode === 'over') startGame(); }
+            });
+            addEventListener('keyup', e => { keys[e.code] = false; });
+
+            // Mouse
+            addEventListener('mousemove', e => {
+                mouse.x = e.clientX / zoomScale;
+                mouse.y = e.clientY / zoomScale;
+            });
+            addEventListener('mousedown', e => { initAudio(); if (AC && AC.state === 'suspended') AC.resume(); if (e
+                    .button === 0) mouse.down = true; });
+            addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+            addEventListener('contextmenu', e => e.preventDefault());
+            document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'playing') pause(); });
+
+            // Touch
+            function getTouchPos(t) {
+                const rect = cvs.getBoundingClientRect();
+                return {
+                    x: (t.clientX - rect.left) / zoomScale,
+                    y: (t.clientY - rect.top) / zoomScale
+                };
+            }
+
+            function handleTouchStart(e) {
+                if (!isTouch) return;
+                initAudio();
+                if (AC && AC.state === 'suspended') AC.resume();
+                if (e.target === cvs || e.target.closest('#touchOverlay')) {
+                    e.preventDefault();
+                }
+                touchActive = true;
+                const touches = e.changedTouches;
+                for (let i = 0; i < touches.length; i++) {
+                    const t = touches[i];
+                    const pos = getTouchPos(t);
+                    // Left half: movement
+                    if (moveId === null && pos.x < W * 0.5) {
+                        moveId = t.identifier;
+                        if (fixedJoystick) {
+                            stickBase = getFixedLeftBase();
+                        } else {
+                            stickBase = { x: pos.x, y: pos.y };
+                            joyBase.style.left = (pos.x * zoomScale) + 'px';
+                            joyBase.style.top = (pos.y * zoomScale) + 'px';
+                            joyBase.classList.add('show');
+                        }
+                        stickVec = { x: 0, y: 0 };
+                        joyThumb.style.left = (stickBase.x * zoomScale) + 'px';
+                        joyThumb.style.top = (stickBase.y * zoomScale) + 'px';
+                        joyThumb.classList.add('show');
+                    }
+                    // Right half: aim + fire
+                    if (aimId === null && pos.x >= W * 0.4) {
+                        aimId = t.identifier;
+                        if (fixedJoystick) {
+                            rightStickBase = getFixedRightBase();
+                        } else {
+                            rightStickBase = { x: pos.x, y: pos.y };
+                            joyRightBase.style.left = (pos.x * zoomScale) + 'px';
+                            joyRightBase.style.top = (pos.y * zoomScale) + 'px';
+                            joyRightBase.classList.add('show');
+                        }
+                        rightStickVec = { x: 0, y: 0 };
+                        aimTouch = { x: pos.x, y: pos.y };
+                        joyRightThumb.style.left = (rightStickBase.x * zoomScale) + 'px';
+                        joyRightThumb.style.top = (rightStickBase.y * zoomScale) + 'px';
+                        joyRightThumb.classList.add('show');
+                        fireRing.style.left = (rightStickBase.x * zoomScale) + 'px';
+                        fireRing.style.top = (rightStickBase.y * zoomScale) + 'px';
+                        fireRing.style.width = '110px';
+                        fireRing.style.height = '110px';
+                        fireRing.classList.add('show');
+                        reticleEl.style.left = (pos.x * zoomScale) + 'px';
+                        reticleEl.style.top = (pos.y * zoomScale) + 'px';
+                        reticleEl.classList.add('show');
+                    }
+                }
+            }
+
+            function handleTouchMove(e) {
+                if (!isTouch) return;
+                e.preventDefault();
+                const touches = e.changedTouches;
+                for (let i = 0; i < touches.length; i++) {
+                    const t = touches[i];
+                    const pos = getTouchPos(t);
+                    if (t.identifier === moveId) {
+                        let dx = pos.x - stickBase.x,
+                            dy = pos.y - stickBase.y;
+                        const m = Math.hypot(dx, dy);
+                        const maxR = Math.min(48, Math.min(W, H) * 0.08);
+                        if (m > maxR) { dx = dx / m * maxR;
+                            dy = dy / m * maxR; }
+                        stickVec = { x: dx / maxR, y: dy / maxR };
+                        joyThumb.style.left = ((stickBase.x + dx) * zoomScale) + 'px';
+                        joyThumb.style.top = ((stickBase.y + dy) * zoomScale) + 'px';
+                    } else if (t.identifier === aimId) {
+                        let dx = pos.x - rightStickBase.x,
+                            dy = pos.y - rightStickBase.y;
+                        const m = Math.hypot(dx, dy);
+                        const maxR = Math.min(48, Math.min(W, H) * 0.08);
+                        if (m > maxR) { dx = dx / m * maxR;
+                            dy = dy / m * maxR; }
+                        rightStickVec = { x: dx / maxR, y: dy / maxR };
+                        aimTouch = { x: rightStickBase.x + dx, y: rightStickBase.y + dy };
+                        joyRightThumb.style.left = ((rightStickBase.x + dx) * zoomScale) + 'px';
+                        joyRightThumb.style.top = ((rightStickBase.y + dy) * zoomScale) + 'px';
+                        reticleEl.style.left = ((rightStickBase.x + dx * 1.6) * zoomScale) + 'px';
+                        reticleEl.style.top = ((rightStickBase.y + dy * 1.6) * zoomScale) + 'px';
+                        // Keep fireRing base at constant size (110px) so Fire joystick does NOT expand when dragged and matches Move joystick exactly
+                        fireRing.style.width = '110px';
+                        fireRing.style.height = '110px';
+                        fireRing.style.left = (rightStickBase.x * zoomScale) + 'px';
+                        fireRing.style.top = (rightStickBase.y * zoomScale) + 'px';
+                    }
+                }
+            }
+
+            function handleTouchEnd(e) {
+                if (!isTouch) return;
+                const touches = e.changedTouches;
+                for (let i = 0; i < touches.length; i++) {
+                    const t = touches[i];
+                    if (t.identifier === moveId) {
+                        moveId = null;
+                        stickVec = { x: 0, y: 0 };
+                        if (!fixedJoystick) {
+                            joyBase.classList.remove('show');
+                        }
+                        joyThumb.classList.remove('show');
+                        if (fixedJoystick) {
+                            const lb = getFixedLeftBase();
+                            joyThumb.style.left = (lb.x * zoomScale) + 'px';
+                            joyThumb.style.top = (lb.y * zoomScale) + 'px';
+                        }
+                    }
+                    if (t.identifier === aimId) {
+                        aimId = null;
+                        rightStickVec = { x: 0, y: 0 };
+                        if (!fixedJoystick) {
+                            joyRightBase.classList.remove('show');
+                        }
+                        joyRightThumb.classList.remove('show');
+                        fireRing.classList.remove('show');
+                        reticleEl.classList.remove('show');
+                        if (fixedJoystick) {
+                            const rb = getFixedRightBase();
+                            joyRightThumb.style.left = (rb.x * zoomScale) + 'px';
+                            joyRightThumb.style.top = (rb.y * zoomScale) + 'px';
+                        }
+                    }
+                }
+                if (moveId === null && aimId === null) touchActive = false;
+            }
+
+            addEventListener('touchstart', handleTouchStart, { passive: false });
+            addEventListener('touchmove', handleTouchMove, { passive: false });
+            addEventListener('touchend', handleTouchEnd, { passive: false });
+            addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+            /* ================= AMBIENT ================= */
+            const snow = [];
+            for (let i = 0; i < 130; i++) snow.push({ x: Math.random() * W, y: Math.random() * H, z: rand(.3, 1),
+                ph: rand(0, TAU) });
+            const silhouette = { active: false, timer: rand(4, 9), x: 0, y: 0, vx: 0, s: 1, dir: 1, ph: 0 };
+            const ambJellies = [];
+            for (let i = 0; i < 5; i++) ambJellies.push({ x: Math.random() * W, y: Math.random() * H, r: rand(10, 20),
+                ph: rand(0, TAU), vy: rand(-9, -4), vx: rand(-4, 4) });
+
+            function updateAmbient(dt) {
+                for (const s of snow) { s.y -= (6 + 18 * s.z) * dt;
+                    s.x += Math.sin(wallT * .6 + s.ph) * 5 * dt; if (s.y < -12) { s.y = H + 12;
+                        s.x = Math.random() * W; } if (s.x < -12) s.x = W + 12; if (s.x > W + 12) s.x = -12; }
+                if (silhouette.active) { silhouette.x += silhouette.vx * dt; if ((silhouette.vx > 0 && silhouette.x > W +
+                        500) || (silhouette.vx < 0 && silhouette.x < -500)) { silhouette.active = false;
+                        silhouette.timer = rand(14, 26); } } else { silhouette.timer -= dt; if (silhouette.timer <= 0) {
+                        silhouette.active = true;
+                        silhouette.dir = Math.random() < .5 ? 1 : -1;
+                        silhouette.x = silhouette.dir > 0 ? -480 : W + 480;
+                        silhouette.vx = silhouette.dir * rand(18, 30);
+                        silhouette.y = rand(H * .15, H * .55);
+                        silhouette.s = rand(.8, 1.7);
+                        silhouette.ph = rand(0, TAU); } }
+                if (mode === 'title') { for (const j of ambJellies) { j.y += j.vy * dt;
+                        j.x += j.vx * dt + Math.sin(wallT * .7 + j.ph) * 6 * dt; if (j.y < -40) { j.y = H + 40;
+                            j.x = Math.random() * W; } } }
+            }
+
+            /* ================= PARTICLES ================= */
+            function spark(x, y, n, color, pow) {
+                pow = pow || 1;
+                for (let i = 0; i < n; i++) { const a = rand(0, TAU),
+                        s = rand(60, 340) * pow;
+                    parts.push({ type: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.35, .85),
+                        max: .85, size: rand(1.4, 3.4), color }); }
+                parts.push({ type: 'ring', x, y, r: 6, vr: 280 * pow, life: .5, max: .5, color });
+                if (parts.length > 430) parts.splice(0, parts.length - 430);
+            }
+
+            function bubble(x, y) { parts.push({ type: 'bub', x, y, vx: rand(-12, 12), vy: rand(-46, -22), life: rand(.6,
+                        1.4), max: 1.4, size: rand(1, 3), color: '#9fd8d2' }); }
+
+            function text(x, y, txt, color) { texts.push({ x, y, txt, life: 1, color }); }
+
+            /* ================= WAVES ================= */
+            const ETYPES = {
+                jelly: { hp: 1, r: 15, score: 40, color: '#ff8a5c' },
+                angler: { hp: 3, r: 14, score: 80, color: '#3df2cf' },
+                spitter: { hp: 4, r: 15, score: 120, color: '#9dff8a' },
+                elite: { hp: 16, r: 32, score: 400, color: '#ffc24b' }
+            };
+
+            function buildQueue(w) {
+                queue.length = 0;
+                const count = Math.min(6 + w * 2, 24);
+                for (let i = 0; i < count; i++) { const r = Math.random();
+                    let k = 'angler'; if (w >= 3 && r < .22) k = 'spitter';
+                    else if (r < .62) k = 'jelly';
+                    queue.push(k); }
+                const elites = w >= 4 ? Math.floor(w / 4) : 0;
+                for (let i = 0; i < elites; i++) queue.push('elite');
+                for (let i = queue.length - 1; i > 0; i--) { const j = randi(i + 1),
+                        t = queue[i];
+                    queue[i] = queue[j];
+                    queue[j] = t; }
+            }
+
+            function startWave(n) {
+                wave = n;
+                waveState = 'announce';
+                announceT = 2.4;
+                buildQueue(n);
+                banner('WAVE ' + String(n).padStart(2, '0') + ' — CONTACTS INBOUND');
+                sfx.wave();
+            }
+
+            function edgePos() {
+                const marginX = Math.max(45, Math.min(85, W * 0.08));
+                const marginY = Math.max(45, Math.min(85, H * 0.08));
+                let x = 0,
+                    y = 0;
+                for (let i = 0; i < 20; i++) {
+                    const s = randi(4);
+                    if (s === 0) { x = rand(marginX, W - marginX); y = marginY; }
+                    else if (s === 1) { x = W - marginX; y = rand(marginY, H - marginY); }
+                    else if (s === 2) { x = rand(marginX, W - marginX); y = H - marginY; }
+                    else { x = marginX; y = rand(marginY, H - marginY); }
+                    if (dist2(x, y, p.x, p.y) > 160 * 160) break;
+                }
+                return { x, y };
+            }
+
+            function spawnEnemy(kind, x, y) {
+                const t = ETYPES[kind];
+                const e = { kind, x, y, vx: 0, vy: 0, hp: t.hp + (kind === 'angler' || kind === 'spitter' ? Math.floor(
+                        wave / 3) : 0) + (kind === 'elite' ? wave : 0),
+                    r: t.r, flash: 0, phase: rand(0, TAU), ang: rand(0, TAU), fireT: rand(1, 2), burstT: 3, t: 0 };
+                enemies.push(e);
+            }
+
+            /* ================= COMBAT ================= */
+            function fire() {
+                p.fireCd = p.rapid > 0 ? .085 : .16;
+                const n = p.spread > 0 ? 3 : 1;
+                for (let k = 0; k < n; k++) {
+                    const a = p.aim + (k - (n - 1) / 2) * .18;
+                    bullets.push({ x: p.x + Math.cos(a) * 24, y: p.y + Math.sin(a) * 24, vx: Math.cos(a) * 640 + p.vx *
+                            .3, vy: Math.sin(a) * 640 + p.vy * .3, life: .9, ang: a });
+                }
+                spark(p.x + Math.cos(p.aim) * 26, p.y + Math.sin(p.aim) * 26, 2, '#9ffce6', .4);
+                shake = Math.min(shake + .5, 26);
+                sfx.fire();
+            }
+
+            function dropOrbs(x, y, n) { for (let i = 0; i < n && orbs.length < 80; i++) { const a = rand(0, TAU),
+                        s = rand(30, 90);
+                    orbs.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, ph: rand(0, TAU) }); } }
+
+            function dropCapsule(x, y) { caps.push({ x, y, kind: pick(['repair', 'shield', 'rapid', 'spread']), t: 0,
+                    life: 12 }); }
+
+            function killEnemy(i, byPlayer) {
+                const e = enemies[i];
+                enemies.splice(i, 1);
+                const t = ETYPES[e.kind];
+                spark(e.x, e.y, e.kind === 'elite' ? 38 : 18, t.color, e.kind === 'elite' ? 1.8 : 1);
+                shake = Math.min(shake + (e.kind === 'elite' ? 14 : 4), 26);
+                sfx.boom(e.kind === 'elite');
+                if (byPlayer) {
+                    combo = Math.min(combo + 1, 30);
+                    comboT = 4;
+                    comboPop();
+                    const pts = t.score * Math.max(1, combo);
+                    score += pts;
+                    kills++;
+                    text(e.x, e.y - 18, '+' + pts, '#ffd166');
+                    dropOrbs(e.x, e.y, e.kind === 'elite' ? 7 : 1 + randi(2));
+                    if (e.kind === 'elite' || Math.random() < .13) dropCapsule(e.x, e.y);
+                }
+                if (e.kind === 'jelly' && !p.dead && dist2(e.x, e.y, p.x, p.y) < 70 * 70) damagePlayer(18);
+            }
+
+            function damagePlayer(d) {
+                if (p.dead || p.iframes > 0) return;
+                if (p.shield > 0) { p.iframes = .15;
+                    spark(p.x, p.y, 8, '#5af0ff', .7);
+                    sfx.shield(); return; }
+                p.hp -= d;
+                p.iframes = .9;
+                shake = Math.min(shake + 12, 26);
+                flashEl.classList.remove('hit');
+                void flashEl.offsetWidth;
+                flashEl.classList.add('hit');
+                sfx.hurt();
+                if (p.hp <= 0) { p.hp = 0;
+                    killPlayer(); }
+            }
+
+            function killPlayer() {
+                p.dead = true;
+                deathT = 1.7;
+                combo = 0;
+                comboEl.classList.remove('on');
+                spark(p.x, p.y, 60, '#8fffe6', 2.4);
+                spark(p.x, p.y, 30, '#ffc24b', 1.6);
+                shake = 26;
+                sfx.boom(true);
+            }
+
+            /* ================= UPDATE ================= */
+            function updatePlayer(dt, live) {
+                p.iframes -= dt;
+                p.shield = Math.max(0, p.shield - dt);
+                p.rapid = Math.max(0, p.rapid - dt);
+                p.spread = Math.max(0, p.spread - dt);
+                p.fireCd -= dt;
+
+                let tx = 0,
+                    ty = 0;
+                if (!p.dead && live) {
+                    if (keys.KeyW || keys.ArrowUp) ty -= 1;
+                    if (keys.KeyS || keys.ArrowDown) ty += 1;
+                    if (keys.KeyA || keys.ArrowLeft) tx -= 1;
+                    if (keys.KeyD || keys.ArrowRight) tx += 1;
+                    if (moveId !== null) { tx = stickVec.x;
+                        ty = stickVec.y; }
+                    const m = Math.hypot(tx, ty);
+                    if (m > 1) { tx /= m;
+                        ty /= m; }
+
+                    // Aim: from mouse OR right joystick OR right touch
+                    const useRightStick = aimId !== null && (Math.abs(rightStickVec.x) > 0.05 || Math.abs(rightStickVec
+                        .y) > 0.05);
+                    if (useRightStick) {
+                        // Aim from right joystick
+                        const aimAngle = Math.atan2(rightStickVec.y, rightStickVec.x);
+                        p.aim = aimAngle;
+                    } else if (aimId !== null) {
+                        // Fallback: use the raw touch position
+                        p.aim = Math.atan2(aimTouch.y - p.y, aimTouch.x - p.x);
+                    } else {
+                        p.aim = Math.atan2(mouse.y - p.y, mouse.x - p.x);
+                    }
+
+                    // Firing: mouse down, space, OR right joystick active
+                    const firing = mouse.down || keys.Space || keys.KeyJ || (aimId !== null && (Math.abs(rightStickVec
+                        .x) > 0.08 || Math.abs(rightStickVec.y) > 0.08));
+                    if (firing && p.fireCd <= 0) fire();
+                }
+
+                const k = 1 - Math.exp(-8 * dt);
+                p.vx += (tx * 330 - p.vx) * k;
+                p.vy += (ty * 330 - p.vy) * k;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.x = clamp(p.x, 20, W - 20);
+                p.y = clamp(p.y, 20, H - 20);
+                if (Math.hypot(p.vx, p.vy) > 60 && Math.random() < dt * 22) bubble(p.x - Math.cos(p.aim) * 18, p.y - Math
+                    .sin(p.aim) * 18);
+            }
+
+            function updateEnemies(dt, live) {
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    e.flash -= dt;
+                    e.t += dt;
+                    const dx = p.x - e.x,
+                        dy = p.y - e.y,
+                        d = Math.hypot(dx, dy) || 1,
+                        nx = dx / d,
+                        ny = dy / d;
+                    if (e.kind === 'jelly') {
+                        const sp = 14 + wave * 1.2;
+                        e.vx += ((nx * sp) - e.vx) * dt * 1.2;
+                        e.vy += ((ny * sp) - e.vy) * dt * 1.2;
+                    } else if (e.kind === 'angler') {
+                        const sp = Math.min(150 + wave * 8, 260),
+                            k = 1 - Math.exp(-2.6 * dt);
+                        const strafe = Math.sin(wallT * 2 + e.phase) * 40;
+                        e.vx += ((nx * sp - ny * strafe * .4) - e.vx) * k;
+                        e.vy += ((ny * sp + nx * strafe * .4) - e.vy) * k;
+                        e.ang = Math.atan2(dy, dx);
+                    } else if (e.kind === 'spitter') {
+                        const nearEdge = (e.x < 75 || e.x > W - 75 || e.y < 75 || e.y > H - 75);
+                        const want = (d > 300 || nearEdge) ? 1 : -1,
+                            k = 1 - Math.exp(-3 * dt);
+                        const px = -ny,
+                            py = nx,
+                            strafe = Math.sin(wallT * .9 + e.phase) * .9;
+                        e.vx += ((nx * 110 * want + px * 70 * strafe) - e.vx) * k;
+                        e.vy += ((ny * 110 * want + py * 70 * strafe) - e.vy) * k;
+                        e.ang = Math.atan2(dy, dx);
+                        if (live && !p.dead) { e.fireT -= dt; if (e.fireT <= 0 && d < 540) { e.fireT = 1.4 + Math
+                                .random() * .9;
+                                ebullets.push({ x: e.x + nx * 14, y: e.y + ny * 14, vx: nx * 240, vy: ny * 240,
+                                    r: 5, life: 4 });
+                                tone && tone(320, 140, .14, 'square', .16); } }
+                    } else if (e.kind === 'elite') {
+                        e.vx += (nx * 46 - e.vx) * dt;
+                        e.vy += (ny * 46 - e.vy) * dt;
+                        e.ang += dt * .5;
+                        if (live && !p.dead) { e.burstT -= dt; if (e.burstT <= 0) { e.burstT = 3.4; for (let a =
+                                0; a < 12; a++) { const an = a / 12 * TAU + e.ang;
+                                    ebullets.push({ x: e.x + Math.cos(an) * 36, y: e.y + Math.sin(an) * 36,
+                                        vx: Math.cos(an) * 165, vy: Math.sin(an) * 165, r: 5, life: 5 }); }
+                                spark(e.x, e.y, 10, '#ffc24b', .8);
+                                sfx.shield(); } }
+                    }
+                    e.x += e.vx * dt;
+                    e.y += e.vy * dt;
+                    const safeX = Math.min(e.r + 15, W * 0.35);
+                    const safeY = Math.min(e.r + 15, H * 0.35);
+                    e.x = clamp(e.x, safeX, W - safeX);
+                    e.y = clamp(e.y, safeY, H - safeY);
+                    if (live && !p.dead) {
+                        const rr = e.r + p.r - 2;
+                        if (dist2(e.x, e.y, p.x, p.y) < rr * rr) {
+                            if (e.kind === 'jelly') { damagePlayer(26);
+                                killEnemy(i, false); continue; }
+                            const dmg = e.kind === 'angler' ? 14 : e.kind === 'spitter' ? 12 : 22;
+                            damagePlayer(dmg);
+                            e.vx = -nx * 190;
+                            e.vy = -ny * 190;
+                            p.vx += nx * 170;
+                            p.vy += ny * 170;
+                        }
+                    }
+                }
+            }
+
+            function updateWaveLogic(dt) {
+                if (waveState === 'announce') { announceT -= dt; if (announceT <= 0) { waveState = 'active';
+                        releaseT = .3; } } else if (waveState === 'active') {
+                    if (queue.length) { releaseT -= dt; if (releaseT <= 0) { releaseT = Math.max(.35, 1.15 - wave *
+                            .05);
+                            const pos = edgePos();
+                            teles.push({ x: pos.x, y: pos.y, kind: queue.shift(), t: 0 }); } } else if (!teles
+                        .length && !enemies.length) {
+                        waveState = 'clear';
+                        const bonus = 100 + wave * 50;
+                        score += bonus;
+                        banner('SECTOR SECURED · +' + bonus);
+                        sfx.wave();
+                        clearT = 2.1;
+                    }
+                } else if (waveState === 'clear') { clearT -= dt; if (clearT <= 0) startWave(wave + 1); }
+            }
+
+            function updatePlaying(dt, live) {
+                if (live && !p.dead) { updateWaveLogic(dt);
+                    depth += dt * (10 + wave * 2); }
+                if (p.dead && mode === 'playing') { deathT -= dt; if (deathT <= 0) endGame(); }
+                updatePlayer(dt, live);
+                updateEnemies(dt, live);
+                for (let i = 0; i < teles.length; i++) teles[i].t += dt;
+                for (let i = teles.length - 1; i >= 0; i--) if (teles[i].t >= .8) { spawnEnemy(teles[i].kind, teles[i]
+                        .x, teles[i].y);
+                    teles.splice(i, 1); }
+                // player bullets
+                for (let i = bullets.length - 1; i >= 0; i--) { const b = bullets[i];
+                    b.x += b.vx * dt;
+                    b.y += b.vy * dt;
+                    b.life -= dt;
+                    let dead = b.life <= 0 || b.x < -60 || b.x > W + 60 || b.y < -60 || b.y > H + 60;
+                    if (!dead && live)
+                        for (let j = enemies.length - 1; j >= 0; j--) { const e = enemies[j],
+                                rr = e.r + 5; if (dist2(b.x, b.y, e.x, e.y) < rr * rr) { e.hp--;
+                                e.flash = .12;
+                                sfx.hit();
+                                spark(b.x, b.y, 3, '#bffef0', .5); if (e.hp <= 0) killEnemy(j, true);
+                                dead = true; break; } }
+                    if (dead) bullets.splice(i, 1); }
+                // enemy bullets
+                for (let i = ebullets.length - 1; i >= 0; i--) { const b = ebullets[i];
+                    b.x += b.vx * dt;
+                    b.y += b.vy * dt;
+                    b.life -= dt;
+                    let dead = b.life <= 0 || b.x < -80 || b.x > W + 80 || b.y < -80 || b.y > H + 80;
+                    if (!dead && live && !p.dead && p.iframes <= 0 && dist2(b.x, b.y, p.x, p.y) < (b.r + p.r) * (b
+                            .r + p.r)) { damagePlayer(10);
+                        spark(b.x, b.y, 6, '#ff7a59', .6);
+                        dead = true; }
+                    if (dead) ebullets.splice(i, 1); }
+                // orbs
+                for (let i = orbs.length - 1; i >= 0; i--) { const o = orbs[i]; if (live && !p.dead) { const d2 =
+                            dist2(o.x, o.y, p.x, p.y); if (d2 < 150 * 150) { const d = Math.sqrt(d2) || 1;
+                            o.vx += ((p.x - o.x) / d) * 900 * dt;
+                            o.vy += ((p.y - o.y) / d) * 900 * dt; } if (d2 < 20 * 20) { score += 15;
+                            sfx.pickup();
+                            spark(o.x, o.y, 4, '#5cf7e0', .4);
+                            orbs.splice(i, 1); continue; } }
+                    o.vx *= Math.exp(-2 * dt);
+                    o.vy *= Math.exp(-2 * dt);
+                    o.x += o.vx * dt;
+                    o.y += o.vy * dt; }
+                // capsules
+                for (let i = caps.length - 1; i >= 0; i--) { const c = caps[i];
+                    c.t += dt;
+                    c.life -= dt; if (c.life <= 0) { caps.splice(i, 1); continue; } if (live && !p.dead) { const d2 =
+                            dist2(c.x, c.y, p.x, p.y); if (d2 < 170 * 170) { const d = Math.sqrt(d2) || 1;
+                            c.x += ((p.x - c.x) / d) * 220 * dt;
+                            c.y += ((p.y - c.y) / d) * 220 * dt; } if (d2 < 24 * 24) { applyCapsule(c);
+                            caps.splice(i, 1); continue; } } }
+                if (live) { comboT -= dt; if (comboT <= 0 && combo > 0) { combo = 0;
+                        comboEl.classList.remove('on'); } }
+            }
+
+            function applyCapsule(c) {
+                sfx.power();
+                spark(c.x, c.y, 14, '#ffc24b', .9);
+                if (c.kind === 'repair') { p.hp = Math.min(p.maxhp, p.hp + 35);
+                    text(c.x, c.y - 20, '+35 HULL', '#9dff8a'); } else if (c.kind === 'shield') { p.shield = 6;
+                    text(c.x, c.y - 20, 'SHIELD ONLINE', '#5af0ff'); } else if (c.kind === 'rapid') { p.rapid = 7;
+                    text(c.x, c.y - 20, 'RAPID FIRE', '#ffd166'); } else { text(c.x, c.y - 20, 'WIDE SPREAD',
+                        '#ffd166');
+                    p.spread = 7; }
+            }
+
+            function updateFx(dt) {
+                for (let i = parts.length - 1; i >= 0; i--) { const q = parts[i];
+                    q.life -= dt; if (q.life <= 0) { parts.splice(i, 1); continue; } if (q.type === 'ring') { q.r +=
+                            q.vr * dt;
+                        q.vr *= Math.exp(-3 * dt); } else if (q.type === 'bub') { q.y += q.vy * dt;
+                        q.x += q.vx * dt + Math.sin(wallT * 4 + q.x) * 8 * dt; } else { q.x += q.vx * dt;
+                        q.y += q.vy * dt;
+                        q.vx *= Math.exp(-2.4 * dt);
+                        q.vy *= Math.exp(-2.4 * dt); } }
+                for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i];
+                    t.y -= 30 * dt;
+                    t.life -= dt * .9; if (t.life <= 0) texts.splice(i, 1); }
+                shake *= Math.exp(-6 * dt);
+                if (shake < .05) shake = 0;
+            }
+
+            /* ================= DRAW ================= */
+            function drawBackground() {
+                const g = ctx.createLinearGradient(0, 0, 0, H);
+                g.addColorStop(0, '#0a3040');
+                g.addColorStop(.45, '#062029');
+                g.addColorStop(1, '#02080d');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, W, H);
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (let i = 0; i < 4; i++) {
+                    const bx = W * (.12 + .26 * i) + Math.sin(wallT * .1 + i * 1.7) * 60;
+                    const gr = ctx.createLinearGradient(bx, 0, bx + 80, H * .75);
+                    gr.addColorStop(0, 'rgba(120,230,255,0.09)');
+                    gr.addColorStop(1, 'rgba(120,230,255,0)');
+                    ctx.fillStyle = gr;
+                    ctx.beginPath();
+                    ctx.moveTo(bx, -20);
+                    ctx.lineTo(bx + 70, -20);
+                    ctx.lineTo(bx + 230, H * .75);
+                    ctx.lineTo(bx + 40, H * .75);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            function drawSnow(frontOnly) {
+                for (const s of snow) {
+                    if (frontOnly !== (s.z > .8)) continue;
+                    const px = s.x - p.x * .03 * s.z,
+                        py = s.y - p.y * .03 * s.z;
+                    ctx.globalAlpha = .22 + .4 * s.z;
+                    ctx.fillStyle = '#9fd8d2';
+                    ctx.beginPath();
+                    ctx.arc(px, py, s.z * 2.1, 0, TAU);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            function drawSilhouette() {
+                if (!silhouette.active) return;
+                const s = silhouette;
+                ctx.save();
+                ctx.translate(s.x, s.y + Math.sin(wallT * .5 + s.ph) * 14);
+                ctx.scale(s.dir * s.s, s.s);
+                ctx.fillStyle = 'rgba(2,10,15,.55)';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 130, 32, 0, 0, TAU);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(-115, 0);
+                ctx.lineTo(-185, -34);
+                ctx.lineTo(-160, 0);
+                ctx.lineTo(-185, 34);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(-10, -30);
+                ctx.lineTo(20, -58);
+                ctx.lineTo(40, -28);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawJellyShape(x, y, r, phase) {
+                const pu = 1 + .1 * Math.sin(wallT * 3 + phase);
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const gl = ctx.createRadialGradient(0, 0, 2, 0, 0, r * 2.2);
+                gl.addColorStop(0, 'rgba(255,130,80,.28)');
+                gl.addColorStop(1, 'rgba(255,130,80,0)');
+                ctx.fillStyle = gl;
+                ctx.beginPath();
+                ctx.arc(0, 0, r * 2.2, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+                ctx.strokeStyle = 'rgba(255,150,90,.75)';
+                ctx.lineWidth = 1.2;
+                for (let i = 0; i < 5; i++) { const x0 = (i - 2) * r * .33;
+                    ctx.beginPath();
+                    ctx.moveTo(x0, r * .15);
+                    ctx.quadraticCurveTo(x0 + Math.sin(wallT * 4 + phase + i) * 4, r * .9, x0 + Math.sin(wallT * 3 +
+                        phase + i * 1.7) * 7, r * 1.7);
+                    ctx.stroke(); }
+                const dg = ctx.createRadialGradient(0, -r * .3, 2, 0, 0, r * 1.2);
+                dg.addColorStop(0, '#ffd9a0');
+                dg.addColorStop(1, 'rgba(255,106,77,.85)');
+                ctx.fillStyle = dg;
+                ctx.strokeStyle = '#ffb27a';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, r * pu, Math.PI, 0);
+                ctx.quadraticCurveTo(r * pu * .6, r * .42, 0, r * .34);
+                ctx.quadraticCurveTo(-r * pu * .6, r * .42, -r * pu, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.globalAlpha = .55 + .45 * Math.sin(wallT * 6 + phase);
+                ctx.fillStyle = '#fff3c0';
+                ctx.beginPath();
+                ctx.arc(0, -r * .15, r * .22, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            }
+
+            function drawAngler(e) {
+                ctx.save();
+                ctx.translate(e.x, e.y);
+                ctx.rotate(e.ang);
+                ctx.strokeStyle = 'rgba(255,209,102,' + (.5 + .5 * Math.sin(wallT * 9 + e.phase)) + ')';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(11, -4);
+                ctx.quadraticCurveTo(18, -10, 22, -14);
+                ctx.stroke();
+                ctx.save();
+                ctx.shadowColor = '#ffd166';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#ffd166';
+                ctx.beginPath();
+                ctx.arc(22, -14, 3, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+                ctx.fillStyle = e.flash > 0 ? '#bffef0' : '#0b2c36';
+                ctx.strokeStyle = '#39e9c8';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(14, 0);
+                ctx.lineTo(-4, -9);
+                ctx.lineTo(-14, -4);
+                ctx.lineTo(-14, 4);
+                ctx.lineTo(-4, 9);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-14, 0);
+                ctx.lineTo(-22, -6);
+                ctx.lineTo(-22, 6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#dffff6';
+                ctx.beginPath();
+                ctx.arc(6, -3, 2, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawSpitter(e) {
+                const bx = e.ang + Math.PI;
+                for (let i = 6; i >= 1; i--) {
+                    const wob = Math.sin(wallT * 5 + e.phase + i * .7) * 4;
+                    const sx = e.x + Math.cos(bx) * i * 9 + Math.cos(e.ang + Math.PI / 2) * wob;
+                    const sy = e.y + Math.sin(bx) * i * 9 + Math.sin(e.ang + Math.PI / 2) * wob;
+                    ctx.fillStyle = '#0d3330';
+                    ctx.strokeStyle = 'rgba(157,255,138,' + (1 - i * .13) + ')';
+                    ctx.lineWidth = 1.3;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, Math.max(2.5, 8 - i * .9), 0, TAU);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                ctx.fillStyle = '#123f36';
+                ctx.strokeStyle = '#9dff8a';
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, 9, 0, TAU);
+                ctx.fill();
+                ctx.stroke();
+                const nx = Math.cos(e.ang),
+                    ny = Math.sin(e.ang);
+                ctx.fillStyle = '#dffff6';
+                ctx.beginPath();
+                ctx.arc(e.x + nx * 4 - ny * 3, e.y + ny * 4 + nx * 3, 1.6, 0, TAU);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(e.x + nx * 4 + ny * 3, e.y + ny * 4 - nx * 3, 1.6, 0, TAU);
+                ctx.fill();
+                if (e.fireT < .35) { ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.fillStyle = 'rgba(255,122,89,.8)';
+                    ctx.beginPath();
+                    ctx.arc(e.x + nx * 9, e.y + ny * 9, 4, 0, TAU);
+                    ctx.fill();
+                    ctx.restore(); }
+            }
+
+            function drawElite(e) {
+                ctx.save();
+                ctx.translate(e.x, e.y);
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const gl = ctx.createRadialGradient(0, 0, 4, 0, 0, 52);
+                gl.addColorStop(0, 'rgba(255,194,75,.25)');
+                gl.addColorStop(1, 'rgba(255,194,75,0)');
+                ctx.fillStyle = gl;
+                ctx.beginPath();
+                ctx.arc(0, 0, 52, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+                ctx.rotate(e.ang);
+                ctx.strokeStyle = e.flash > 0 ? '#fff' : '#ff9a63';
+                ctx.lineWidth = 5;
+                ctx.shadowColor = '#ff9a63';
+                ctx.shadowBlur = 8;
+                for (let i = 0; i < 8; i++) { const a0 = i * TAU / 8 + .09,
+                        a1 = (i + 1) * TAU / 8 - .09;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 30, a0, a1);
+                    ctx.stroke(); }
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#ffd166';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 18, 0, TAU);
+                ctx.stroke();
+                const pu = 1 + .15 * Math.sin(wallT * 4 + e.phase);
+                const cg = ctx.createRadialGradient(0, 0, 1, 0, 0, 12 * pu);
+                cg.addColorStop(0, '#fff0b0');
+                cg.addColorStop(1, '#ff5c4d');
+                ctx.fillStyle = cg;
+                ctx.beginPath();
+                ctx.arc(0, 0, 11 * pu, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawPlayer() {
+                if (p.dead) return;
+                if (p.iframes > 0 && Math.floor(wallT * 20) % 2 === 0) ctx.globalAlpha = .35;
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                if (p.shield > 0) { ctx.save();
+                    ctx.strokeStyle = 'rgba(90,240,255,' + (.5 + .3 * Math.sin(wallT * 6)) + ')';
+                    ctx.lineWidth = 2; for (let i = 0; i < 2; i++) { ctx.beginPath();
+                        ctx.arc(0, 0, 25, wallT * 2.4 + i * Math.PI, wallT * 2.4 + i * Math.PI + 2.2);
+                        ctx.stroke(); }
+                    ctx.restore(); }
+                ctx.rotate(p.aim);
+                ctx.shadowColor = '#49f5d5';
+                ctx.shadowBlur = 14;
+                ctx.fillStyle = '#0d3742';
+                ctx.strokeStyle = '#49f5d5';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(20, 0);
+                ctx.quadraticCurveTo(6, -11, -12, -9);
+                ctx.quadraticCurveTo(-20, 0, -12, 9);
+                ctx.quadraticCurveTo(6, 11, 20, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.moveTo(-12, -8);
+                ctx.lineTo(-20, -14);
+                ctx.lineTo(-8, -9);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-12, 8);
+                ctx.lineTo(-20, 14);
+                ctx.lineTo(-8, 9);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.save();
+                ctx.strokeStyle = 'rgba(159,216,210,.8)';
+                ctx.lineWidth = 1.5;
+                const spin = Math.sin(wallT * 30) * 6;
+                ctx.beginPath();
+                ctx.moveTo(-18, -spin * .6);
+                ctx.lineTo(-18, spin * .6);
+                ctx.stroke();
+                ctx.restore();
+                ctx.save();
+                ctx.shadowColor = '#bffff0';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#d6fff4';
+                ctx.beginPath();
+                ctx.arc(7, 0, 4.5, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            }
+
+            function drawTelegraph(t) {
+                const a = t.t / .8,
+                    col = ETYPES[t.kind].color;
+                ctx.save();
+                ctx.translate(t.x, t.y);
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.strokeStyle = col;
+                ctx.globalAlpha = .35 + .4 * Math.abs(Math.sin(wallT * 10));
+                ctx.setLineDash([6, 6]);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 26 - 8 * a, 0, TAU);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.globalAlpha = a;
+                ctx.beginPath();
+                ctx.arc(0, 0, 4 + 4 * a, 0, TAU);
+                ctx.stroke();
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            }
+
+            function drawCapsule(c) {
+                if (c.life < 3 && Math.floor(wallT * 8) % 2 === 0) return;
+                ctx.save();
+                ctx.translate(c.x, c.y + Math.sin(wallT * 2 + c.t) * 3);
+                ctx.rotate(Math.sin(wallT * 1.6 + c.t) * .2);
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const gl = ctx.createRadialGradient(0, 0, 2, 0, 0, 26);
+                gl.addColorStop(0, 'rgba(255,194,75,.3)');
+                gl.addColorStop(1, 'rgba(255,194,75,0)');
+                ctx.fillStyle = gl;
+                ctx.beginPath();
+                ctx.arc(0, 0, 26, 0, TAU);
+                ctx.fill();
+                ctx.restore();
+                ctx.strokeStyle = '#ffd166';
+                ctx.fillStyle = 'rgba(255,194,75,.14)';
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) { const a = i / 6 * TAU - Math.PI / 2;
+                    i ? ctx.lineTo(Math.cos(a) * 13, Math.sin(a) * 13) : ctx.moveTo(Math.cos(a) * 13, Math.sin(a) *
+                    13); }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#ffe9b0';
+                ctx.font = '700 12px "Chakra Petch"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(c.kind === 'repair' ? '+' : c.kind === 'shield' ? 'S' : c.kind === 'rapid' ? 'R' : 'W', 0,
+                1);
+                ctx.restore();
+            }
+
+            function drawArenaBorder() {
+                if (mode === 'title') return;
+                const m = 18;
+                ctx.save();
+                ctx.strokeStyle = 'rgba(61, 242, 207, 0.16)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(m, m, W - m * 2, H - m * 2);
+
+                // Corner brackets
+                const len = Math.min(40, W * 0.05);
+                ctx.strokeStyle = 'rgba(61, 242, 207, 0.55)';
+                ctx.lineWidth = 2;
+                // top-left
+                ctx.beginPath();
+                ctx.moveTo(m, m + len); ctx.lineTo(m, m); ctx.lineTo(m + len, m);
+                // top-right
+                ctx.moveTo(W - m - len, m); ctx.lineTo(W - m, m); ctx.lineTo(W - m, m + len);
+                // bottom-left
+                ctx.moveTo(m, H - m - len); ctx.lineTo(m, H - m); ctx.lineTo(m + len, H - m);
+                // bottom-right
+                ctx.moveTo(W - m - len, H - m); ctx.lineTo(W - m, H - m); ctx.lineTo(W - m, H - m - len);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function render() {
+                drawBackground();
+                drawArenaBorder();
+                drawSnow(false);
+                drawSilhouette();
+                ctx.save();
+                if (shake > 0) ctx.translate(rand(-shake, shake), rand(-shake, shake));
+                if (mode === 'title') { for (const j of ambJellies) drawJellyShape(j.x, j.y, j.r, j.ph); } else {
+                    for (const t of teles) drawTelegraph(t);
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    for (const o of orbs) {
+                        ctx.fillStyle = 'rgba(92,247,224,.3)';
+                        ctx.beginPath();
+                        ctx.arc(o.x, o.y + Math.sin(wallT * 3 + o.ph) * 2, 8, 0, TAU);
+                        ctx.fill();
+                        ctx.fillStyle = '#dffff8';
+                        ctx.beginPath();
+                        ctx.arc(o.x, o.y + Math.sin(wallT * 3 + o.ph) * 2, 3, 0, TAU);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                    for (const c of caps) drawCapsule(c);
+                    for (const e of enemies) {
+                        if (e.kind === 'jelly') drawJellyShape(e.x, e.y, e.r, e.phase);
+                        else if (e.kind === 'angler') drawAngler(e);
+                        else if (e.kind === 'spitter') drawSpitter(e);
+                        else drawElite(e);
+                    }
+                    drawPlayer();
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    for (const b of bullets) { ctx.save();
+                        ctx.translate(b.x, b.y);
+                        ctx.rotate(b.ang);
+                        ctx.shadowColor = '#5cf7e0';
+                        ctx.shadowBlur = 8;
+                        ctx.fillStyle = '#bffef0';
+                        ctx.fillRect(-9, -1.6, 18, 3.2);
+                        ctx.restore(); }
+                    for (const b of ebullets) { ctx.shadowColor = '#ff7a59';
+                        ctx.shadowBlur = 8;
+                        ctx.fillStyle = '#ff7a59';
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, b.r, 0, TAU);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffd9c9';
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, b.r * .4, 0, TAU);
+                        ctx.fill(); }
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                }
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (const q of parts) { const a = clamp(q.life / q.max, 0, 1); if (q.type === 'ring') { ctx
+                            .globalAlpha = a;
+                        ctx.strokeStyle = q.color;
+                        ctx.lineWidth = 2.5 * a;
+                        ctx.beginPath();
+                        ctx.arc(q.x, q.y, q.r, 0, TAU);
+                        ctx.stroke(); } else { ctx.globalAlpha = a * .9;
+                        ctx.fillStyle = q.color;
+                        ctx.beginPath();
+                        ctx.arc(q.x, q.y, q.size * a + .4, 0, TAU);
+                        ctx.fill(); } }
+                ctx.restore();
+                ctx.globalAlpha = 1;
+                ctx.font = '700 14px "Chakra Petch"';
+                ctx.textAlign = 'center';
+                for (const t of texts) { ctx.globalAlpha = clamp(t.life, 0, 1);
+                    ctx.fillStyle = t.color;
+                    ctx.fillText(t.txt, t.x, t.y); }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+                drawSnow(true);
+            }
+
+            /* ================= HUD ================= */
+            function updateHUD() {
+                shownScore += (score - shownScore) * .15;
+                scoreVal.textContent = Math.round(shownScore).toLocaleString();
+                const pct = clamp(p.hp / p.maxhp * 100, 0, 100);
+                hullFill.style.width = pct + '%';
+                hpPanel.classList.toggle('critical', pct < 30 && pct > 0);
+                document.body.classList.toggle('critical', pct < 30 && pct > 0 && mode === 'playing');
+                waveVal.textContent = String(Math.max(1, wave)).padStart(2, '0');
+                contactVal.textContent = enemies.length + queue.length + teles.length;
+                depthVal.textContent = Math.floor(depth).toLocaleString() + ' M';
+                depthFill.style.height = ((depth % 500) / 500 * 100) + '%';
+            }
+
+            /* ================= FLOW ================= */
+            function resetGame() {
+                bullets.length = 0;
+                ebullets.length = 0;
+                enemies.length = 0;
+                teles.length = 0;
+                orbs.length = 0;
+                caps.length = 0;
+                parts.length = 0;
+                texts.length = 0;
+                queue.length = 0;
+                score = 0;
+                shownScore = 0;
+                kills = 0;
+                combo = 0;
+                comboT = 0;
+                depth = 420;
+                simT = 0;
+                shake = 0;
+                Object.assign(p, { x: W / 2, y: H / 2, vx: 0, vy: 0, aim: -Math.PI / 2, hp: 100, fireCd: 0, iframes: 0,
+                    shield: 0, rapid: 0, spread: 0, dead: false });
+                comboEl.classList.remove('on');
+                // Reset touch states
+                moveId = null;
+                aimId = null;
+                stickVec = { x: 0, y: 0 };
+                rightStickVec = { x: 0, y: 0 };
+                joyBase.classList.remove('show');
+                joyThumb.classList.remove('show');
+                joyRightBase.classList.remove('show');
+                joyRightThumb.classList.remove('show');
+                fireRing.classList.remove('show');
+                reticleEl.classList.remove('show');
+            }
+
+            function startGame() {
+                initAudio();
+                if (AC && AC.state === 'suspended') AC.resume();
+                resetGame();
+                mode = 'playing';
+                show($('titleScreen'), false);
+                show($('overScreen'), false);
+                show($('pauseScreen'), false);
+                show($('aboutScreen'), false);
+                show($('settingsScreen'), false);
+                show($('briefingScreen'), false);
+                hudEl.classList.remove('off');
+                updateJoystickAnchors();
+                checkOrientationNotice();
+                startWave(1);
+            }
+
+            function pause() { mode = 'paused';
+                show($('pauseScreen'), true); }
+
+            function resume() { mode = 'playing';
+                show($('pauseScreen'), false); }
+
+            function goToTitle() {
+                mode = 'title';
+                show($('pauseScreen'), false);
+                show($('overScreen'), false);
+                show($('aboutScreen'), false);
+                show($('settingsScreen'), false);
+                show($('briefingScreen'), false);
+                show($('titleScreen'), true);
+                hudEl.classList.add('off');
+                document.body.classList.remove('critical');
+                resetGame();
+                // Restore best display
+                titleBest.textContent = best.toLocaleString();
+                bestVal.textContent = best.toLocaleString();
+                // Reset audio
+                if (master) master.gain.value = muted ? 0 : .16;
+                updateJoystickAnchors();
+                checkOrientationNotice();
+            }
+
+            const OVERLINES = ['The trench keeps what it takes.', 'Hull breach at terminal depth. Beacon silent.',
+                'Last ping received. No response. Current strong.', 'The light went out at '
+            ];
+
+            function endGame() {
+                mode = 'over';
+                hudEl.classList.add('off');
+                document.body.classList.remove('critical');
+                const isRecord = score > best;
+                if (isRecord) { best = score; try { localStorage.setItem('deepcurrent_best', String(best)); } catch (
+                    e) {} }
+                titleBest.textContent = best.toLocaleString();
+                bestVal.textContent = best.toLocaleString();
+                $('finalScore').textContent = score.toLocaleString();
+                $('finalWave').textContent = wave;
+                $('finalKills').textContent = kills;
+                $('finalDepth').textContent = Math.floor(depth).toLocaleString() + ' M';
+                $('recordBadge').classList.toggle('on', isRecord);
+                $('overLine').textContent = isRecord ? 'A record haul dragged back from the dark. The trench will remember you.' :
+                    'Hull breach at ' + Math.floor(depth).toLocaleString() + ' m. Beacon silent.';
+                show($('overScreen'), true);
+                // Reset touch states
+                joyBase.classList.remove('show');
+                joyThumb.classList.remove('show');
+                joyRightBase.classList.remove('show');
+                joyRightThumb.classList.remove('show');
+                fireRing.classList.remove('show');
+                reticleEl.classList.remove('show');
+            }
+
+            function openSettings() {
+                updateFixedJoyUI();
+                const soundBtn = $('toggleSoundBtn');
+                if (soundBtn) soundBtn.textContent = muted ? 'OFF' : 'ON';
+                const joyRow = $('toggleFixedJoyBtn') ? $('toggleFixedJoyBtn').closest('.setting-row') : null;
+                if (joyRow) {
+                    joyRow.style.display = isTouch ? 'flex' : 'none';
+                    const joyHeader = joyRow.previousElementSibling;
+                    if (joyHeader && joyHeader.classList.contains('sys')) {
+                        joyHeader.style.display = isTouch ? 'block' : 'none';
+                    }
+                }
+                show($('settingsScreen'), true);
+            }
+            function closeSettings() {
+                show($('settingsScreen'), false);
+            }
+            function openAbout() {
+                show($('aboutScreen'), true);
+            }
+            function closeAbout() {
+                show($('aboutScreen'), false);
+            }
+
+            // Event listeners
+            $('aboutScreen').addEventListener('click', e => {
+                if (e.target === $('aboutScreen')) closeAbout();
+            });
+            $('settingsScreen').addEventListener('click', e => {
+                if (e.target === $('settingsScreen')) closeSettings();
+            });
+            $('settingsBtn').addEventListener('click', e => { e.target.blur();
+                openSettings(); });
+            $('aboutBtn').addEventListener('click', e => { e.target.blur();
+                openAbout(); });
+            $('pauseSettingsBtn').addEventListener('click', e => { e.target.blur();
+                openSettings(); });
+            $('settingsCloseBtn').addEventListener('click', e => { e.target.blur();
+                closeSettings(); });
+            $('aboutCloseBtn').addEventListener('click', e => { e.target.blur();
+                closeAbout(); });
+            $('toggleFixedJoyBtn').addEventListener('click', e => { e.target.blur();
+                toggleFixedJoystick(); });
+            $('toggleSoundBtn').addEventListener('click', e => { e.target.blur();
+                initAudio();
+                toggleMute(); });
+            $('diveBtn').addEventListener('click', e => { e.target.blur();
+                startGame(); });
+            function openBriefing() {
+                show($('briefingScreen'), true);
+            }
+            function closeBriefing() {
+                show($('briefingScreen'), false);
+            }
+            $('briefBtn').addEventListener('click', e => { e.target.blur();
+                openBriefing(); });
+            $('briefingCloseBtn').addEventListener('click', e => { e.target.blur();
+                closeBriefing(); });
+            $('briefingScreen').addEventListener('click', e => {
+                if (e.target === $('briefingScreen')) closeBriefing();
+            });
+            $('againBtn').addEventListener('click', e => { e.target.blur();
+                startGame(); });
+            $('overExitBtn').addEventListener('click', e => { e.target.blur();
+                goToTitle(); });
+            $('resumeBtn').addEventListener('click', e => { e.target.blur();
+                resume(); });
+            $('pauseRestartBtn').addEventListener('click', e => { e.target.blur();
+                startGame(); });
+            $('pauseExitBtn').addEventListener('click', e => { e.target.blur();
+                goToTitle(); });
+            $('pauseBtn').addEventListener('click', e => { e.target.blur(); if (mode === 'playing') pause(); else if (
+                    mode === 'paused') resume(); });
+            $('muteBtn').addEventListener('click', e => { e.target.blur();
+                initAudio();
+                toggleMute(); });
+            $('pauseMuteBtn').addEventListener('click', e => { e.target.blur();
+                toggleMute(); });
+
+            /* ================= LOOP ================= */
+            let last = performance.now();
+
+            function frame(now) {
+                let dt = (now - last) / 1000;
+                last = now;
+                if (dt > .05) dt = .05;
+                wallT += dt;
+                if (mode !== 'paused') {
+                    updateAmbient(dt);
+                    if (mode === 'playing' || mode === 'over') { simT += dt;
+                        updatePlaying(dt, mode === 'playing' && !p.dead);
+                        updateFx(dt); } else updateFx(dt);
+                }
+                render();
+                updateHUD();
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+
+            // Fix for iOS Safari vh
+            const setVH = () => { const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', vh + 'px'); };
+            setVH();
+            addEventListener('resize', setVH);
+        })();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26ce502cecdff8d',t:'MTc4NjAwNzI4MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

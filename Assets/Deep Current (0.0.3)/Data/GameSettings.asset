@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70007af598ea598d4c2a1b5a5dd94f94, type: 3}
+  m_Name: GameSettings
+  m_EditorClassIdentifier: 
+  playerMaxHp: 100
+  playerMaxSpeed: 330
+  playerAccel: 8
+  playerRadius: 15
+  iframeTime: 0.9
+  arenaPadding: 20
+  fireCooldown: 0.16
+  bulletSpeed: 640
+  bulletLife: 0.9
+  waveAnnounceTime: 2.4
+  waveClearTime: 2.1
+  deathDelay: 1.7
+  spawnInterval: 1.15
+  spawnIntervalShrinkPerWave: 0.05
+  spawnIntervalMin: 0.35
+  randomMovementWave: 4
